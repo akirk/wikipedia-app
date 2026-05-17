@@ -2,7 +2,7 @@
 
 ## Original Request
 
-Build on the existing WpApp scaffold to create a Wikipedia browser app. The primary experience should let users search Wikipedia in a chosen language, read articles inside the app, follow article links while staying in the app, see other language versions of the current article, and optionally save articles as local WordPress sources that can be refetched later.
+Build on the existing WpApp scaffold to create a Wikipedia browser app. The primary experience should let users search Wikipedia in a chosen language, read articles inside the app, follow article links while staying in the app, see other language versions of the current article, and optionally save articles into WordPress so they can be refetched later.
 
 ## Generated App Details
 
@@ -16,8 +16,9 @@ Build on the existing WpApp scaffold to create a Wikipedia browser app. The prim
 
 - Local Git repository initialized on `main`.
 - Initial scaffold committed as `4ca5715 Initial scaffold`.
+- Browser app implementation committed as `aa02124 Build Wikipedia browser app`.
 - GitHub remote was intentionally skipped; user will handle it later.
-- Implementation in progress; direction corrected so browsing/searching Wikipedia is the main app, and saving is secondary.
+- UI revamp in progress after `aa02124`: saved articles have their own `/wikipedia/saved/` page, article language switching is moving to the article header, and save wording is now "Save article".
 
 ## Checklist
 
@@ -27,7 +28,7 @@ Build on the existing WpApp scaffold to create a Wikipedia browser app. The prim
 - [x] Register private `wikipedia_article` CPT with REST/admin UI support and admin metadata columns.
 - [x] Add multilingual Wikipedia search/fetch helpers using WordPress HTTP APIs.
 - [x] Add app UI to choose search language, search Wikipedia, read article HTML in the app, follow article links inside the app, and open other language versions.
-- [x] Add saved article route.
+- [x] Add saved article route and dedicated saved articles list page.
 - [x] Register focused WordPress Abilities.
 - [x] Add PHPUnit through Composer and unit tests for pure helpers.
 - [x] Add `blueprint.json` for WordPress Playground activation.
@@ -41,9 +42,10 @@ Build on the existing WpApp scaffold to create a Wikipedia browser app. The prim
 - Read `../cookbook/src/App.php` and template examples for local WpApp patterns.
 - Changed `IMPLEMENTATION_PLAN.md` to keep this work resumable and record the corrected product direction.
 - Changed `src/App.php` to implement the CPT, origin/refetch post meta, admin columns, Wikipedia search/fetch/parse helpers, internal link rewriting, language-link formatting, save/refetch handlers, app routes, and AI Assistant abilities.
-- Changed `templates/index.php` to provide the Wikipedia search interface, language selector, results, and saved-local-source list.
-- Added `templates/article.php` for live in-app Wikipedia reading, language switching, internal link browsing, and save action.
-- Added `templates/saved.php` for local saved-source reading and refetching.
+- Changed `templates/index.php` to provide the Wikipedia search interface, language selector, and results.
+- Added `templates/article.php` for live in-app Wikipedia reading, top-right language switching, internal link browsing, and save action.
+- Added `templates/saved-list.php` for the dedicated saved articles page at `/wikipedia/saved/`.
+- Added `templates/saved.php` for saved article reading and refetching.
 - Added `templates/_header.php` and `templates/_footer.php` shared app chrome and styles.
 - Changed `composer.json` and `composer.lock` to add `phpunit/phpunit` as a dev dependency and `composer test`.
 - Added `phpunit.xml.dist`, `tests/bootstrap.php`, and `tests/AppHelpersTest.php` for database-free unit tests.

@@ -41,6 +41,9 @@ if ( ! defined( 'ABSPATH' ) ) {
         .wiki-page-head h1 { margin: 0 0 0.2rem; font-size: clamp(1.7rem, 4vw, 2.35rem); line-height: 1.15; letter-spacing: 0; }
         .wiki-subtitle { margin: 0; color: var(--wiki-muted); }
         .wiki-actions { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; }
+        .wiki-language-switcher { display: inline-flex; align-items: center; min-height: 2.45rem; border: 1px solid var(--wiki-line); border-radius: 4px; background: var(--wiki-card-alt); overflow: hidden; }
+        .wiki-language-switcher span { padding: 0 0.6rem; color: var(--wiki-muted); font-size: 0.84rem; font-weight: 700; border-right: 1px solid var(--wiki-line); }
+        .wiki-language-switcher select { width: auto; min-width: 10rem; max-width: 16rem; height: 2.45rem; border: 0; border-radius: 0; background: transparent; font-weight: 600; }
         .wiki-search { display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto; gap: 0.55rem; align-items: end; margin: 1rem 0 1.2rem; }
         .wiki-search label { display: grid; gap: 0.25rem; margin: 0; font-weight: 600; }
         .wiki-search span { color: var(--wiki-muted); font-size: 0.84rem; font-weight: 500; }
@@ -70,6 +73,8 @@ if ( ! defined( 'ABSPATH' ) ) {
         .wiki-chip:hover { border-color: var(--wiki-primary); }
         .wiki-chip small { color: var(--wiki-muted); }
         .wiki-article-tools { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin: 0.9rem 0; }
+        .wiki-saved-list-full .wiki-saved-item { padding: 1rem; }
+        .wiki-saved-list-full .wiki-saved-item h2 { margin: 0 0 0.3rem; font-size: 1.2rem; }
         .wiki-article { background: var(--wiki-card); border: 1px solid var(--wiki-line); border-radius: 6px; padding: clamp(1rem, 3vw, 1.6rem); overflow-wrap: anywhere; }
         .wiki-article img { max-width: 100%; height: auto; }
         .wiki-article table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
@@ -81,6 +86,8 @@ if ( ! defined( 'ABSPATH' ) ) {
             .wiki-layout, .wiki-search { grid-template-columns: 1fr; }
             .wiki-page-head { display: block; }
             .wiki-actions { justify-content: flex-start; margin-top: 0.75rem; }
+            .wiki-language-switcher { width: 100%; }
+            .wiki-language-switcher select { flex: 1; max-width: none; }
             .wiki-article .infobox { float: none; max-width: 100%; margin: 0 0 1rem; }
         }
     </style>

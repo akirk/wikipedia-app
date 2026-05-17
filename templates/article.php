@@ -66,6 +66,17 @@ include __DIR__ . '/_header.php';
             <p class="wiki-subtitle"><?php echo esc_html( $article['language_label'] . ' (' . $article['language'] . ')' ); ?></p>
         </div>
         <div class="wiki-actions">
+            <label class="wiki-language-switcher">
+                <span><?php esc_html_e( 'Language', 'wikipedia' ); ?></span>
+                <select onchange="if (this.value) window.location.href = this.value;">
+                    <option value="<?php echo esc_url( $article['app_url'] ); ?>" selected><?php echo esc_html( $article['language_label'] . ' (' . $article['language'] . ')' ); ?></option>
+                    <?php foreach ( $article['available_languages'] as $translation ) : ?>
+                        <option value="<?php echo esc_url( $translation['app_url'] ); ?>">
+                            <?php echo esc_html( $translation['language_label'] . ' (' . $translation['language'] . ')' ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <a class="wiki-btn secondary" href="<?php echo esc_url( $article['source_url'] ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'Wikipedia', 'wikipedia' ); ?></a>
             <?php if ( current_user_can( 'edit_posts' ) ) : ?>
                 <form class="wiki-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -74,25 +85,11 @@ include __DIR__ . '/_header.php';
                     <input type="hidden" name="page_id" value="<?php echo esc_attr( $article['page_id'] ); ?>">
                     <input type="hidden" name="title" value="<?php echo esc_attr( $article['title'] ); ?>">
                     <input type="hidden" name="language" value="<?php echo esc_attr( $article['language'] ); ?>">
-                    <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save local source', 'wikipedia' ); ?></button>
+                    <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save article', 'wikipedia' ); ?></button>
                 </form>
             <?php endif; ?>
         </div>
     </div>
-
-    <?php if ( ! empty( $article['available_languages'] ) ) : ?>
-        <section class="wiki-card">
-            <h2><?php esc_html_e( 'Other languages', 'wikipedia' ); ?></h2>
-            <div class="wiki-language-links">
-                <?php foreach ( $article['available_languages'] as $translation ) : ?>
-                    <a class="wiki-chip" href="<?php echo esc_url( $translation['app_url'] ); ?>">
-                        <span><?php echo esc_html( $translation['language_label'] ); ?></span>
-                        <small><?php echo esc_html( $translation['language'] ); ?></small>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </section>
-    <?php endif; ?>
 
     <article class="wiki-article">
         <?php echo $article['html']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is sanitized and internal links are rewritten in App::fetch_wikipedia_article(). ?>

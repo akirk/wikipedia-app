@@ -52,6 +52,7 @@ class App extends BaseApp {
 
     protected function setup_routes(): void {
         $this->app->route( 'article/{language}', 'article.php' );
+        $this->app->route( 'saved', 'saved-list.php' );
         $this->app->route( 'saved/{id}', 'saved.php' );
         $this->app->route( 'saved/{slug}', 'saved.php' );
     }
@@ -60,7 +61,7 @@ class App extends BaseApp {
         $home = self::get_app_url();
 
         $this->app->add_menu_item( 'search', __( 'Search', 'wikipedia' ), $home );
-        $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wikipedia' ), $home . '#saved-articles' );
+        $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wikipedia' ), self::get_saved_articles_url() );
     }
 
     public function register_post_types(): void {
@@ -287,7 +288,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wikipedia/save-article', [
             'label'               => __( 'Save Wikipedia Article', 'wikipedia' ),
-            'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wikipedia_article source. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
+            'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wikipedia_article post. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
             'category'            => 'wikipedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -415,7 +416,7 @@ class App extends BaseApp {
             },
             'meta'                => [
                 'annotations' => [
-                    'instructions' => 'Report whether the saved local source was updated and link view_url.',
+                    'instructions' => 'Report whether the saved article was updated and link view_url.',
                     'readonly'     => false,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -525,7 +526,7 @@ class App extends BaseApp {
         }
 
         if ( in_array( $ability_id, [ 'wikipedia/save-article', 'wikipedia/refetch-saved-article' ], true ) ) {
-            return __( 'Confirm whether the local Wikipedia source was created or updated, and link the saved source using view_url.', 'wikipedia' );
+            return __( 'Confirm whether the Wikipedia article was saved or updated, and link it using view_url.', 'wikipedia' );
         }
 
         if ( in_array( $ability_id, [ 'wikipedia/get-article', 'wikipedia/get-saved-article' ], true ) ) {
@@ -538,6 +539,10 @@ class App extends BaseApp {
     public static function get_app_url( string $path = '' ): string {
         $path = ltrim( $path, '/' );
         return home_url( '/wikipedia/' . $path );
+    }
+
+    public static function get_saved_articles_url(): string {
+        return self::get_app_url( 'saved' );
     }
 
     public static function get_article_url( string $language, string $title = '', int $page_id = 0 ): string {

@@ -64,6 +64,10 @@ class AppHelpersTest extends TestCase {
         );
     }
 
+    public function test_saved_articles_url(): void {
+        $this->assertSame( 'https://example.test/wikipedia/saved', App::get_saved_articles_url() );
+    }
+
     public function test_article_allowed_html_contains_expected_article_tags(): void {
         $allowed = App::article_allowed_html();
 

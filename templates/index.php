@@ -23,7 +23,6 @@ if ( '' !== $query ) {
     }
 }
 
-$saved_articles = App::list_saved_articles( '', 10 );
 $languages = App::get_supported_languages();
 if ( ! isset( $languages[ $language ] ) ) {
     $languages[ $language ] = App::get_language_label( $language );
@@ -35,10 +34,10 @@ include __DIR__ . '/_header.php';
 <div class="wiki-page-head">
     <div>
         <h1><?php esc_html_e( 'Wikipedia', 'wikipedia' ); ?></h1>
-        <p class="wiki-subtitle"><?php esc_html_e( 'Search, read, follow links, switch article languages, and save local sources.', 'wikipedia' ); ?></p>
+        <p class="wiki-subtitle"><?php esc_html_e( 'Search, read, follow links, switch article languages, and save articles.', 'wikipedia' ); ?></p>
     </div>
     <div class="wiki-actions">
-        <a class="wiki-btn secondary" href="#saved-articles"><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></a>
+        <a class="wiki-btn secondary" href="<?php echo esc_url( App::get_saved_articles_url() ); ?>"><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></a>
     </div>
 </div>
 
@@ -62,83 +61,60 @@ include __DIR__ . '/_header.php';
     <button class="wiki-btn" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
 </form>
 
-<div class="wiki-layout">
-    <section>
-        <?php if ( $search_error ) : ?>
-            <div class="wiki-notice error"><?php echo esc_html( $search_error->get_error_message() ); ?></div>
-        <?php elseif ( is_array( $results ) ) : ?>
-            <h2>
-                <?php
-                echo esc_html(
-                    sprintf(
-                        /* translators: 1: search query, 2: language label */
-                        __( 'Results for "%1$s" in %2$s', 'wikipedia' ),
-                        $query,
-                        App::get_language_label( $language )
-                    )
-                );
-                ?>
-            </h2>
-            <?php if ( $results ) : ?>
-                <ul class="wiki-results">
-                    <?php foreach ( $results as $result ) : ?>
-                        <li class="wiki-result">
-                            <h2><a href="<?php echo esc_url( $result['app_url'] ); ?>"><?php echo esc_html( $result['title'] ); ?></a></h2>
-                            <div class="wiki-meta">
-                                <span><?php echo esc_html( $result['language_label'] . ' (' . $result['language'] . ')' ); ?></span>
-                                <?php if ( ! empty( $result['word_count'] ) ) : ?>
-                                    <span><?php echo esc_html( number_format_i18n( $result['word_count'] ) . ' ' . __( 'words', 'wikipedia' ) ); ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <?php if ( ! empty( $result['snippet'] ) ) : ?>
-                                <p><?php echo esc_html( $result['snippet'] ); ?></p>
-                            <?php endif; ?>
-                            <div class="wiki-article-tools">
-                                <a class="wiki-btn secondary" href="<?php echo esc_url( $result['app_url'] ); ?>"><?php esc_html_e( 'Read', 'wikipedia' ); ?></a>
-                                <?php if ( current_user_can( 'edit_posts' ) ) : ?>
-                                    <form class="wiki-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                                        <?php wp_nonce_field( App::NONCE_SAVE_ARTICLE ); ?>
-                                        <input type="hidden" name="action" value="wikipedia_save_article">
-                                        <input type="hidden" name="page_id" value="<?php echo esc_attr( $result['page_id'] ); ?>">
-                                        <input type="hidden" name="title" value="<?php echo esc_attr( $result['title'] ); ?>">
-                                        <input type="hidden" name="language" value="<?php echo esc_attr( $result['language'] ); ?>">
-                                        <button class="wiki-btn secondary" type="submit"><?php esc_html_e( 'Save', 'wikipedia' ); ?></button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php else : ?>
-                <div class="wiki-notice"><?php esc_html_e( 'No Wikipedia results found.', 'wikipedia' ); ?></div>
-            <?php endif; ?>
-        <?php else : ?>
-            <div class="wiki-card">
-                <h2><?php esc_html_e( 'Start with a search', 'wikipedia' ); ?></h2>
-                <p><?php esc_html_e( 'The search language defaults to your WordPress profile language.', 'wikipedia' ); ?></p>
-            </div>
-        <?php endif; ?>
-    </section>
-
-    <aside id="saved-articles" class="wiki-card">
-        <h2><?php esc_html_e( 'Saved local sources', 'wikipedia' ); ?></h2>
-        <?php if ( $saved_articles ) : ?>
-            <ul class="wiki-saved-list">
-                <?php foreach ( $saved_articles as $saved ) : ?>
-                    <li class="wiki-saved-item">
-                        <h3><a href="<?php echo esc_url( $saved['view_url'] ); ?>"><?php echo esc_html( $saved['title'] ); ?></a></h3>
+<section>
+    <?php if ( $search_error ) : ?>
+        <div class="wiki-notice error"><?php echo esc_html( $search_error->get_error_message() ); ?></div>
+    <?php elseif ( is_array( $results ) ) : ?>
+        <h2>
+            <?php
+            echo esc_html(
+                sprintf(
+                    /* translators: 1: search query, 2: language label */
+                    __( 'Results for "%1$s" in %2$s', 'wikipedia' ),
+                    $query,
+                    App::get_language_label( $language )
+                )
+            );
+            ?>
+        </h2>
+        <?php if ( $results ) : ?>
+            <ul class="wiki-results">
+                <?php foreach ( $results as $result ) : ?>
+                    <li class="wiki-result">
+                        <h2><a href="<?php echo esc_url( $result['app_url'] ); ?>"><?php echo esc_html( $result['title'] ); ?></a></h2>
                         <div class="wiki-meta">
-                            <span><?php echo esc_html( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?></span>
-                            <?php if ( $saved['refetched_at'] ) : ?>
-                                <span><?php echo esc_html( $saved['refetched_at'] ); ?></span>
+                            <span><?php echo esc_html( $result['language_label'] . ' (' . $result['language'] . ')' ); ?></span>
+                            <?php if ( ! empty( $result['word_count'] ) ) : ?>
+                                <span><?php echo esc_html( number_format_i18n( $result['word_count'] ) . ' ' . __( 'words', 'wikipedia' ) ); ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ( ! empty( $result['snippet'] ) ) : ?>
+                            <p><?php echo esc_html( $result['snippet'] ); ?></p>
+                        <?php endif; ?>
+                        <div class="wiki-article-tools">
+                            <a class="wiki-btn secondary" href="<?php echo esc_url( $result['app_url'] ); ?>"><?php esc_html_e( 'Read', 'wikipedia' ); ?></a>
+                            <?php if ( current_user_can( 'edit_posts' ) ) : ?>
+                                <form class="wiki-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                                    <?php wp_nonce_field( App::NONCE_SAVE_ARTICLE ); ?>
+                                    <input type="hidden" name="action" value="wikipedia_save_article">
+                                    <input type="hidden" name="page_id" value="<?php echo esc_attr( $result['page_id'] ); ?>">
+                                    <input type="hidden" name="title" value="<?php echo esc_attr( $result['title'] ); ?>">
+                                    <input type="hidden" name="language" value="<?php echo esc_attr( $result['language'] ); ?>">
+                                    <button class="wiki-btn secondary" type="submit"><?php esc_html_e( 'Save article', 'wikipedia' ); ?></button>
+                                </form>
                             <?php endif; ?>
                         </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
         <?php else : ?>
-            <p><?php esc_html_e( 'No saved articles yet.', 'wikipedia' ); ?></p>
+            <div class="wiki-notice"><?php esc_html_e( 'No Wikipedia results found.', 'wikipedia' ); ?></div>
         <?php endif; ?>
-    </aside>
-</div>
+    <?php else : ?>
+        <div class="wiki-card">
+            <h2><?php esc_html_e( 'Start with a search', 'wikipedia' ); ?></h2>
+            <p><?php esc_html_e( 'The search language defaults to your WordPress profile language.', 'wikipedia' ); ?></p>
+        </div>
+    <?php endif; ?>
+</section>
 <?php include __DIR__ . '/_footer.php'; ?>

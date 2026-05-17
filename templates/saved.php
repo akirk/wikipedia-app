@@ -22,7 +22,7 @@ include __DIR__ . '/_header.php';
     <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['saved'] ) ) : ?>
-    <div class="wiki-notice success"><?php esc_html_e( 'Saved as a local source.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice success"><?php esc_html_e( 'Article saved.', 'wikipedia' ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['refetched'] ) ) : ?>
     <div class="wiki-notice success"><?php esc_html_e( 'Refetched from Wikipedia.', 'wikipedia' ); ?></div>
@@ -39,7 +39,7 @@ include __DIR__ . '/_header.php';
                 echo esc_html(
                     sprintf(
                         /* translators: 1: language label, 2: page ID */
-                        __( 'Local source from %1$s Wikipedia, page %2$d', 'wikipedia' ),
+                        __( 'Saved article from %1$s Wikipedia, page %2$d', 'wikipedia' ),
                         $article['language_label'],
                         $article['page_id']
                     )
