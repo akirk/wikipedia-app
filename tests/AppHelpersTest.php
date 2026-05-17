@@ -43,16 +43,16 @@ class AppHelpersTest extends TestCase {
         $this->assertSame( 'SCO', App::get_language_label( 'sco' ) );
     }
 
-    public function test_saved_article_slug_includes_language_title_and_page_id(): void {
+    public function test_saved_article_slug_includes_language_and_title(): void {
         $this->assertSame(
-            'de-albert-einstein-736',
+            'de-albert-einstein',
             App::build_article_slug( 'de', 'Albert Einstein', 736 )
         );
     }
 
-    public function test_article_url_prefers_page_id(): void {
+    public function test_article_url_prefers_title_for_readable_urls(): void {
         $this->assertSame(
-            'https://example.test/wikipedia/article/de?page_id=736',
+            'https://example.test/wikipedia/article/de?title=Albert%20Einstein',
             App::get_article_url( 'de', 'Albert Einstein', 736 )
         );
     }
@@ -61,6 +61,13 @@ class AppHelpersTest extends TestCase {
         $this->assertSame(
             'https://example.test/wikipedia/article/en?title=Albert%20Einstein',
             App::get_article_url( 'en', 'Albert Einstein' )
+        );
+    }
+
+    public function test_article_url_can_use_page_id_when_title_is_missing(): void {
+        $this->assertSame(
+            'https://example.test/wikipedia/article/de?page_id=736',
+            App::get_article_url( 'de', '', 736 )
         );
     }
 

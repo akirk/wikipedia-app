@@ -28,6 +28,42 @@ if ( ! isset( $languages[ $language ] ) ) {
     $languages[ $language ] = App::get_language_label( $language );
 }
 
+$saved_posts = get_posts( [
+    'post_type'      => App::POST_TYPE,
+    'post_status'    => [ 'publish', 'draft', 'private' ],
+    'posts_per_page' => -1,
+    'orderby'        => 'title',
+    'order'          => 'ASC',
+] );
+
+$saved_articles = [];
+foreach ( $saved_posts as $saved_post ) {
+    $saved_articles[] = App::format_saved_article( $saved_post );
+}
+
+$saved_articles_by_letter = [];
+foreach ( $saved_articles as $saved ) {
+    $title = trim( $saved['title'] );
+    $letter = function_exists( 'mb_substr' ) ? mb_substr( $title, 0, 1 ) : substr( $title, 0, 1 );
+    $letter = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $letter ) : strtoupper( $letter );
+    if ( '' === $letter || ! preg_match( '/[[:alpha:]]/u', $letter ) ) {
+        $letter = '#';
+    }
+    if ( ! isset( $saved_articles_by_letter[ $letter ] ) ) {
+        $saved_articles_by_letter[ $letter ] = [];
+    }
+    $saved_articles_by_letter[ $letter ][] = $saved;
+}
+uksort( $saved_articles_by_letter, function( $a, $b ) {
+    if ( '#' === $a ) {
+        return 1;
+    }
+    if ( '#' === $b ) {
+        return -1;
+    }
+    return strcasecmp( $a, $b );
+} );
+
 $page_title = __( 'Wikipedia', 'wikipedia' );
 include __DIR__ . '/_header.php';
 ?>
@@ -61,7 +97,7 @@ include __DIR__ . '/_header.php';
     <button class="wiki-btn" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
 </form>
 
-<section>
+<section class="wiki-search-results">
     <?php if ( $search_error ) : ?>
         <div class="wiki-notice error"><?php echo esc_html( $search_error->get_error_message() ); ?></div>
     <?php elseif ( is_array( $results ) ) : ?>
@@ -111,10 +147,60 @@ include __DIR__ . '/_header.php';
             <div class="wiki-notice"><?php esc_html_e( 'No Wikipedia results found.', 'wikipedia' ); ?></div>
         <?php endif; ?>
     <?php else : ?>
-        <div class="wiki-card">
-            <h2><?php esc_html_e( 'Start with a search', 'wikipedia' ); ?></h2>
-            <p><?php esc_html_e( 'The search language defaults to your WordPress profile language.', 'wikipedia' ); ?></p>
+        <div class="wiki-notice"><?php esc_html_e( 'Search Wikipedia above, or open one of your saved articles below.', 'wikipedia' ); ?></div>
+    <?php endif; ?>
+</section>
+
+<section class="wiki-home-saved">
+    <div class="wiki-section-head">
+        <div>
+            <h2><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></h2>
+            <p class="wiki-subtitle">
+                <?php
+                echo esc_html(
+                    sprintf(
+                        /* translators: %d: number of saved articles */
+                        _n( '%d article saved in WordPress.', '%d articles saved in WordPress.', count( $saved_articles ), 'wikipedia' ),
+                        count( $saved_articles )
+                    )
+                );
+                ?>
+            </p>
         </div>
+        <a class="wiki-btn secondary" href="<?php echo esc_url( App::get_saved_articles_url() ); ?>"><?php esc_html_e( 'View all', 'wikipedia' ); ?></a>
+    </div>
+
+    <?php if ( $saved_articles_by_letter ) : ?>
+        <nav class="wiki-alpha-index" aria-label="<?php esc_attr_e( 'Saved article index', 'wikipedia' ); ?>">
+            <?php foreach ( array_keys( $saved_articles_by_letter ) as $letter ) : ?>
+                <?php $letter_id = '#' === $letter ? 'other' : sanitize_title( $letter ); ?>
+                <a class="wiki-chip" href="#saved-<?php echo esc_attr( $letter_id ); ?>"><?php echo esc_html( $letter ); ?></a>
+            <?php endforeach; ?>
+        </nav>
+
+        <?php foreach ( $saved_articles_by_letter as $letter => $group ) : ?>
+            <?php $letter_id = '#' === $letter ? 'other' : sanitize_title( $letter ); ?>
+            <section class="wiki-alpha-section" id="saved-<?php echo esc_attr( $letter_id ); ?>">
+                <h3 class="wiki-alpha-heading"><?php echo esc_html( $letter ); ?></h3>
+                <ul class="wiki-alpha-list">
+                    <?php foreach ( $group as $saved ) : ?>
+                        <li>
+                            <a href="<?php echo esc_url( $saved['view_url'] ); ?>">
+                                <span class="wiki-alpha-title"><?php echo esc_html( $saved['title'] ); ?></span>
+                                <span class="wiki-meta">
+                                    <span><?php echo esc_html( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?></span>
+                                    <?php if ( $saved['saved_at'] ) : ?>
+                                        <span><?php echo esc_html( __( 'Saved', 'wikipedia' ) . ': ' . $saved['saved_at'] ); ?></span>
+                                    <?php endif; ?>
+                                </span>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </section>
+        <?php endforeach; ?>
+    <?php else : ?>
+        <div class="wiki-notice"><?php esc_html_e( 'No saved articles yet.', 'wikipedia' ); ?></div>
     <?php endif; ?>
 </section>
 <?php include __DIR__ . '/_footer.php'; ?>

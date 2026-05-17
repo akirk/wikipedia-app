@@ -60,8 +60,8 @@ include __DIR__ . '/_header.php';
                 <h2><a href="<?php echo esc_url( $saved['view_url'] ); ?>"><?php echo esc_html( $saved['title'] ); ?></a></h2>
                 <div class="wiki-meta">
                     <span><?php echo esc_html( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?></span>
-                    <?php if ( $saved['page_id'] ) : ?>
-                        <span><?php echo esc_html( __( 'Page', 'wikipedia' ) . ' ' . $saved['page_id'] ); ?></span>
+                    <?php if ( $saved['saved_at'] ) : ?>
+                        <span><?php echo esc_html( __( 'Saved', 'wikipedia' ) . ': ' . $saved['saved_at'] ); ?></span>
                     <?php endif; ?>
                     <?php if ( $saved['refetched_at'] ) : ?>
                         <span><?php echo esc_html( __( 'Refetched', 'wikipedia' ) . ': ' . $saved['refetched_at'] ); ?></span>

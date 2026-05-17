@@ -153,9 +153,8 @@ class App extends BaseApp {
 
         if ( 'wikipedia_source' === $column ) {
             $source_url = (string) get_post_meta( $post_id, self::META_SOURCE_URL, true );
-            $page_id    = absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) );
             if ( $source_url ) {
-                printf( '<a href="%s" target="_blank" rel="noreferrer">%s</a>', esc_url( $source_url ), esc_html( $page_id ? '#' . $page_id : __( 'Wikipedia', 'wikipedia' ) ) );
+                printf( '<a href="%s" target="_blank" rel="noreferrer">%s</a>', esc_url( $source_url ), esc_html__( 'Wikipedia', 'wikipedia' ) );
             }
             return;
         }
@@ -552,10 +551,10 @@ class App extends BaseApp {
         }
 
         $args = [];
-        if ( $page_id ) {
-            $args['page_id'] = absint( $page_id );
-        } elseif ( '' !== $title ) {
+        if ( '' !== $title ) {
             $args['title'] = $title;
+        } elseif ( $page_id ) {
+            $args['page_id'] = absint( $page_id );
         }
 
         return add_query_arg( $args, self::get_app_url( 'article/' . $language ) );
@@ -868,27 +867,30 @@ class App extends BaseApp {
         $page_id  = absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) );
 
         $article = [
-            'post_id'          => $post_id,
-            'id'               => $post_id,
-            'title'            => get_the_title( $post ),
-            'status'           => get_post_status( $post ),
-            'summary'          => $post->post_excerpt ?: wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' ),
-            'page_id'          => $page_id,
-            'language'         => $language,
-            'language_label'   => self::get_language_label( $language ),
-            'source_url'       => (string) get_post_meta( $post_id, self::META_SOURCE_URL, true ),
-            'thumbnail_url'    => (string) get_post_meta( $post_id, self::META_THUMBNAIL_URL, true ),
-            'last_revision_id' => (string) get_post_meta( $post_id, self::META_LAST_REVISION, true ),
-            'remote_touched'   => (string) get_post_meta( $post_id, self::META_REMOTE_TOUCHED, true ),
-            'saved_at'         => (string) get_post_meta( $post_id, self::META_SAVED_AT, true ),
-            'refetched_at'     => (string) get_post_meta( $post_id, self::META_REFETCHED_AT, true ),
-            'view_url'         => self::get_app_url( 'saved/' . ( $post->post_name ?: $post_id ) ),
-            'live_app_url'     => self::get_article_url( $language, get_the_title( $post ), $page_id ),
-            'edit_url'         => get_edit_post_link( $post_id, '' ) ?: '',
+            'post_id'             => $post_id,
+            'id'                  => $post_id,
+            'title'               => get_the_title( $post ),
+            'status'              => get_post_status( $post ),
+            'summary'             => $post->post_excerpt ?: wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' ),
+            'page_id'             => $page_id,
+            'language'            => $language,
+            'language_label'      => self::get_language_label( $language ),
+            'source_url'          => (string) get_post_meta( $post_id, self::META_SOURCE_URL, true ),
+            'thumbnail_url'       => (string) get_post_meta( $post_id, self::META_THUMBNAIL_URL, true ),
+            'last_revision_id'    => (string) get_post_meta( $post_id, self::META_LAST_REVISION, true ),
+            'remote_touched'      => (string) get_post_meta( $post_id, self::META_REMOTE_TOUCHED, true ),
+            'saved_at'            => (string) get_post_meta( $post_id, self::META_SAVED_AT, true ),
+            'refetched_at'        => (string) get_post_meta( $post_id, self::META_REFETCHED_AT, true ),
+            'view_url'            => self::get_app_url( 'saved/' . ( $post->post_name ?: $post_id ) ),
+            'live_app_url'        => self::get_article_url( $language, get_the_title( $post ), $page_id ),
+            'app_url'             => self::get_article_url( $language, get_the_title( $post ), $page_id ),
+            'edit_url'            => get_edit_post_link( $post_id, '' ) ?: '',
+            'available_languages' => [],
         ];
 
         if ( $include_content ) {
             $article['content'] = $post->post_content;
+            $article['html']    = $post->post_content;
         }
 
         return array_merge( $article, $extra );
@@ -1078,7 +1080,12 @@ class App extends BaseApp {
     }
 
     public static function build_article_slug( string $language, string $title, int $page_id ): string {
-        return sanitize_title( trim( $language . '-' . $title . '-' . absint( $page_id ) ) );
+        $slug = trim( $language . '-' . $title );
+        if ( '' === trim( $title ) && $page_id ) {
+            $slug .= '-' . absint( $page_id );
+        }
+
+        return sanitize_title( $slug );
     }
 
     private static function wikipedia_page_url( string $language, string $title = '', int $page_id = 0 ): string {
