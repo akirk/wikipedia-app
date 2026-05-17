@@ -20,5 +20,11 @@
     ],
     "config": {
         "autoloader-suffix": "wikipedia"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
