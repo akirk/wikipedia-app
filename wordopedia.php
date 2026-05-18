@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Wikipedia
- * Description: A WordPress app powered by WpApp.
+ * Plugin Name: Wordopedia
+ * Description: A personal encyclopedia app powered by WpApp.
  * Version: 1.0.0
  * Author: Alex Kirk
  * Text Domain: wikipedia

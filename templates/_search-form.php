@@ -28,7 +28,7 @@ $wiki_search_language_tabs = isset( $wiki_search_language_tabs ) ? (string) $wik
     data-can-save="<?php echo esc_attr( current_user_can( 'edit_posts' ) ? '1' : '0' ); ?>"
 >
     <label class="wiki-search-field">
-        <input type="search" name="q" value="<?php echo esc_attr( $wiki_search_query ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search online Wikipedia', 'wikipedia' ); ?>" data-wiki-quicksearch-input aria-label="<?php esc_attr_e( 'Search online Wikipedia', 'wikipedia' ); ?>" aria-controls="<?php echo esc_attr( $wiki_search_results_target ); ?>">
+        <input type="search" name="q" value="<?php echo esc_attr( $wiki_search_query ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search Wikipedia', 'wikipedia' ); ?>" data-wiki-quicksearch-input aria-label="<?php esc_attr_e( 'Search Wikipedia', 'wikipedia' ); ?>" aria-controls="<?php echo esc_attr( $wiki_search_results_target ); ?>">
     </label>
     <input type="hidden" name="language" value="<?php echo esc_attr( $wiki_search_language ); ?>">
     <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>

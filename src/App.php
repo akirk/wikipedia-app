@@ -40,7 +40,7 @@ class App extends BaseApp {
     public function __construct() {
         $this->app = new WpApp( $this->get_template_dir(), $this->get_url_path(), [
             'require_login' => true,
-            'app_name'      => __( 'Wikipedia', 'wikipedia' ),
+            'app_name'      => __( 'Wordopedia', 'wikipedia' ),
             'my_apps'       => true,
         ] );
 
@@ -65,7 +65,7 @@ class App extends BaseApp {
     }
 
     protected function get_url_path(): string {
-        return 'wikipedia';
+        return 'wordopedia';
     }
 
     protected function get_template_dir(): string {
@@ -73,7 +73,7 @@ class App extends BaseApp {
     }
 
     private function enqueue_assets(): void {
-        $plugin_file = dirname( __DIR__ ) . '/wikipedia-app.php';
+        $plugin_file = dirname( __DIR__ ) . '/wordopedia.php';
         $style_path  = dirname( __DIR__ ) . '/assets/css/app.css';
         $script_path = dirname( __DIR__ ) . '/assets/js/app.js';
 
@@ -128,15 +128,15 @@ class App extends BaseApp {
     public function register_post_types(): void {
         register_post_type( self::POST_TYPE, [
             'labels' => [
-                'name'               => __( 'Wikipedia Articles', 'wikipedia' ),
-                'singular_name'      => __( 'Wikipedia Article', 'wikipedia' ),
-                'add_new_item'       => __( 'Add New Wikipedia Article', 'wikipedia' ),
-                'edit_item'          => __( 'Edit Wikipedia Article', 'wikipedia' ),
-                'new_item'           => __( 'New Wikipedia Article', 'wikipedia' ),
-                'view_item'          => __( 'View Wikipedia Article', 'wikipedia' ),
-                'search_items'       => __( 'Search Wikipedia Articles', 'wikipedia' ),
-                'not_found'          => __( 'No Wikipedia articles found.', 'wikipedia' ),
-                'not_found_in_trash' => __( 'No Wikipedia articles found in Trash.', 'wikipedia' ),
+                'name'               => __( 'Wordopedia Articles', 'wikipedia' ),
+                'singular_name'      => __( 'Wordopedia Article', 'wikipedia' ),
+                'add_new_item'       => __( 'Add New Wordopedia Article', 'wikipedia' ),
+                'edit_item'          => __( 'Edit Wordopedia Article', 'wikipedia' ),
+                'new_item'           => __( 'New Wordopedia Article', 'wikipedia' ),
+                'view_item'          => __( 'View Wordopedia Article', 'wikipedia' ),
+                'search_items'       => __( 'Search Wordopedia Articles', 'wikipedia' ),
+                'not_found'          => __( 'No Wordopedia articles found.', 'wikipedia' ),
+                'not_found_in_trash' => __( 'No Wordopedia articles found in Trash.', 'wikipedia' ),
             ],
             'public'              => false,
             'show_ui'             => true,
@@ -152,15 +152,15 @@ class App extends BaseApp {
 
         register_post_type( self::POST_TYPE_SNIPPET, [
             'labels' => [
-                'name'               => __( 'Wikipedia Snippets', 'wikipedia' ),
-                'singular_name'      => __( 'Wikipedia Snippet', 'wikipedia' ),
-                'add_new_item'       => __( 'Add New Wikipedia Snippet', 'wikipedia' ),
-                'edit_item'          => __( 'Edit Wikipedia Snippet', 'wikipedia' ),
-                'new_item'           => __( 'New Wikipedia Snippet', 'wikipedia' ),
-                'view_item'          => __( 'View Wikipedia Snippet', 'wikipedia' ),
-                'search_items'       => __( 'Search Wikipedia Snippets', 'wikipedia' ),
-                'not_found'          => __( 'No Wikipedia snippets found.', 'wikipedia' ),
-                'not_found_in_trash' => __( 'No Wikipedia snippets found in Trash.', 'wikipedia' ),
+                'name'               => __( 'Wordopedia Snippets', 'wikipedia' ),
+                'singular_name'      => __( 'Wordopedia Snippet', 'wikipedia' ),
+                'add_new_item'       => __( 'Add New Wordopedia Snippet', 'wikipedia' ),
+                'edit_item'          => __( 'Edit Wordopedia Snippet', 'wikipedia' ),
+                'new_item'           => __( 'New Wordopedia Snippet', 'wikipedia' ),
+                'view_item'          => __( 'View Wordopedia Snippet', 'wikipedia' ),
+                'search_items'       => __( 'Search Wordopedia Snippets', 'wikipedia' ),
+                'not_found'          => __( 'No Wordopedia snippets found.', 'wikipedia' ),
+                'not_found_in_trash' => __( 'No Wordopedia snippets found in Trash.', 'wikipedia' ),
             ],
             'public'              => false,
             'show_ui'             => true,
@@ -361,7 +361,7 @@ class App extends BaseApp {
         }
 
         wp_register_ability_category( 'wikipedia', [
-            'label'       => __( 'Wikipedia', 'wikipedia' ),
+            'label'       => __( 'Wordopedia', 'wikipedia' ),
             'description' => __( 'Search, browse, save, refetch, and annotate Wikipedia articles.', 'wikipedia' ),
         ] );
     }
@@ -401,7 +401,7 @@ class App extends BaseApp {
             },
             'meta'                => [
                 'annotations' => [
-                    'instructions' => 'Use app_url to open search results in the Wikipedia app. Use page_id and language with wikipedia/get-article or wikipedia/save-article.',
+                    'instructions' => 'Use app_url to open search results in Wordopedia. Use page_id and language with wikipedia/get-article or wikipedia/save-article.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -785,7 +785,7 @@ class App extends BaseApp {
 
     public static function get_app_url( string $path = '' ): string {
         $path = ltrim( $path, '/' );
-        return home_url( '/wikipedia/' . $path );
+        return home_url( '/wordopedia/' . $path );
     }
 
     public static function get_saved_articles_url(): string {
@@ -1455,7 +1455,7 @@ class App extends BaseApp {
     }
 
     private static function wikipedia_user_agent(): string {
-        return 'Wikipedia WordPress App/1.0 (' . home_url( '/' ) . ')';
+        return 'Wordopedia/1.0 (' . home_url( '/' ) . '; uses Wikipedia API)';
     }
 
     private static function is_wordpress_playground(): bool {

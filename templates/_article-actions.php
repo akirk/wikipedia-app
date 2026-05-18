@@ -25,7 +25,7 @@ $is_saved_view = ! empty( $is_saved_view );
     <a class="wiki-btn secondary" href="<?php echo esc_url( $article['live_app_url'] ); ?>"><?php esc_html_e( 'Open live', 'wikipedia' ); ?></a>
 <?php endif; ?>
 <?php if ( ! empty( $article['source_url'] ) ) : ?>
-    <a class="wiki-btn secondary" href="<?php echo esc_url( $article['source_url'] ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'Wikipedia', 'wikipedia' ); ?></a>
+    <a class="wiki-btn secondary" href="<?php echo esc_url( $article['source_url'] ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'View on Wikipedia', 'wikipedia' ); ?></a>
 <?php endif; ?>
 <?php if ( current_user_can( 'edit_posts' ) ) : ?>
     <?php if ( $is_saved_view && ! empty( $article['post_id'] ) ) : ?>

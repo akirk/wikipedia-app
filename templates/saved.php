@@ -15,7 +15,7 @@ if ( ! $post ) {
 }
 
 $article = $post ? App::format_saved_article( $post, true ) : null;
-$page_title = $article ? $article['title'] : __( 'Saved Wikipedia article', 'wikipedia' );
+$page_title = $article ? $article['title'] : __( 'Saved encyclopedia article', 'wikipedia' );
 $wiki_current_nav = 'saved';
 if ( $article ) {
     $wiki_article_actions = [

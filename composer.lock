@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6f9db8a10573a99b77dea0505af664f8",
+    "content-hash": "d8d8c947a629fc5e8f816cb5fffd9bb0",
     "packages": [
         {
             "name": "akirk/wp-app",

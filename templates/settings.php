@@ -11,7 +11,7 @@ foreach ( $selected_languages as $code ) {
     $selected_language_labels[ $code ] = App::get_language_label( $code );
 }
 
-$page_title = __( 'Wikipedia settings', 'wikipedia' );
+$page_title = __( 'Wordopedia settings', 'wikipedia' );
 $wiki_current_nav = 'settings';
 include __DIR__ . '/_header.php';
 ?>
