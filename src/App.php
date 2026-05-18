@@ -1604,8 +1604,60 @@ class App extends BaseApp {
     }
 
     private static function sanitize_article_html( string $html, string $language ): string {
+        $html = self::remove_article_resource_nodes( $html );
         $html = self::rewrite_article_links( $html, $language );
         return wp_kses( $html, self::article_allowed_html() );
+    }
+
+    private static function remove_article_resource_nodes( string $html ): string {
+        if ( ! class_exists( '\DOMDocument' ) ) {
+            $html = preg_replace( '~<style\b[^>]*>.*?</style>~is', '', $html );
+            $html = preg_replace( '~<link\b[^>]*>~is', '', is_string( $html ) ? $html : '' );
+            return is_string( $html ) ? $html : '';
+        }
+
+        $previous = libxml_use_internal_errors( true );
+        $document = new \DOMDocument();
+        $flags = 0;
+        if ( defined( 'LIBXML_HTML_NOIMPLIED' ) ) {
+            $flags |= LIBXML_HTML_NOIMPLIED;
+        }
+        if ( defined( 'LIBXML_HTML_NODEFDTD' ) ) {
+            $flags |= LIBXML_HTML_NODEFDTD;
+        }
+
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wikipedia-app-article-root">' . $html . '</div>', $flags );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $previous );
+
+        if ( ! $loaded ) {
+            return $html;
+        }
+
+        foreach ( [ 'style', 'link' ] as $tag_name ) {
+            $nodes = [];
+            foreach ( $document->getElementsByTagName( $tag_name ) as $node ) {
+                $nodes[] = $node;
+            }
+
+            foreach ( $nodes as $node ) {
+                if ( $node->parentNode ) {
+                    $node->parentNode->removeChild( $node );
+                }
+            }
+        }
+
+        $root = $document->getElementById( 'wikipedia-app-article-root' );
+        if ( ! $root ) {
+            return $html;
+        }
+
+        $cleaned = '';
+        foreach ( $root->childNodes as $child ) {
+            $cleaned .= $document->saveHTML( $child );
+        }
+
+        return $cleaned;
     }
 
     private static function rewrite_article_links( string $html, string $current_language ): string {
