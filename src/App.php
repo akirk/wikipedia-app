@@ -40,6 +40,8 @@ class App extends BaseApp {
             'my_apps'       => true,
         ] );
 
+        $this->enqueue_assets();
+
         add_action( 'init', [ $this, 'register_post_types' ] );
         add_action( 'admin_post_wikipedia_save_article', [ $this, 'handle_save_article' ] );
         add_action( 'admin_post_wikipedia_refetch_article', [ $this, 'handle_refetch_article' ] );
@@ -64,6 +66,27 @@ class App extends BaseApp {
 
     protected function get_template_dir(): string {
         return dirname( __DIR__ ) . '/templates';
+    }
+
+    private function enqueue_assets(): void {
+        $plugin_file = dirname( __DIR__ ) . '/wikipedia-app.php';
+        $style_path  = dirname( __DIR__ ) . '/assets/css/app.css';
+        $script_path = dirname( __DIR__ ) . '/assets/js/app.js';
+
+        wp_app_enqueue_style(
+            'wikipedia-app',
+            plugins_url( 'assets/css/app.css', $plugin_file ),
+            [],
+            file_exists( $style_path ) ? (string) filemtime( $style_path ) : false
+        );
+
+        wp_app_enqueue_script(
+            'wikipedia-app',
+            plugins_url( 'assets/js/app.js', $plugin_file ),
+            [],
+            file_exists( $script_path ) ? (string) filemtime( $script_path ) : false,
+            true
+        );
     }
 
     protected function setup_database(): void {
