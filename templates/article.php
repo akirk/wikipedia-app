@@ -32,7 +32,7 @@ if ( $page_id || '' !== $title ) {
     }
 }
 
-$page_title = $article ? $article['title'] : __( 'Wikipedia article', 'wikipedia' );
+$page_title = $article ? $article['title'] : __( 'Encyclopedia article', 'wikipedia' );
 $wiki_current_nav = 'search';
 include __DIR__ . '/_header.php';
 ?>

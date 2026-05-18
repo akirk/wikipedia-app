@@ -1,6 +1,6 @@
-# Wikipedia
+# Wordopedia
 
-A WordPress app powered by [WpApp](https://github.com/akirk/wp-app).
+A personal encyclopedia app for WordPress, powered by [WpApp](https://github.com/akirk/wp-app).
 
 ## Wikimedia API usage
 

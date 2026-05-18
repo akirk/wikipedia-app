@@ -59,6 +59,7 @@ a:hover, a:focus { color: var(--wiki-primary-hover); text-decoration: underline;
 .wiki-nav-menu-panel .wiki-language-switcher select { flex: 1; max-width: none; }
 .wiki-content { padding-top: 0; }
 .wiki-content > :first-child { margin-top: 0; }
+.wiki-footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--wiki-line-soft); color: var(--wiki-muted); font-size: 0.78rem; line-height: 1.45; }
 .wiki-page-head { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-end; margin: 0 0 0.85rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--wiki-line); }
 .wiki-page-head h1 { margin: 0 0 0.15rem; font-family: var(--wiki-serif); font-size: clamp(1.85rem, 4vw, 2.45rem); font-weight: 400; line-height: 1.18; letter-spacing: 0; }
 .wiki-article-head { margin-bottom: 0.8rem; }

@@ -1,11 +1,11 @@
 {
 	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
 	"meta": {
-		"title": "Wikipedia App",
-		"description": "Search, browse, and save Wikipedia articles.",
+		"title": "Wordopedia",
+		"description": "A personal encyclopedia for searching, browsing, and saving articles.",
 		"author": "Alex Kirk"
 	},
-	"landingPage": "/wikipedia/",
+	"landingPage": "/wordopedia/",
 	"login": true,
 	"steps": [
 		{

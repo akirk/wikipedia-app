@@ -66,36 +66,36 @@ class AppHelpersTest extends TestCase {
 
     public function test_article_url_prefers_title_for_readable_urls(): void {
         $this->assertSame(
-            'https://example.test/wikipedia/article/de?title=Albert%20Einstein',
+            'https://example.test/wordopedia/article/de?title=Albert%20Einstein',
             App::get_article_url( 'de', 'Albert Einstein', 736 )
         );
     }
 
     public function test_article_url_can_use_title(): void {
         $this->assertSame(
-            'https://example.test/wikipedia/article/en?title=Albert%20Einstein',
+            'https://example.test/wordopedia/article/en?title=Albert%20Einstein',
             App::get_article_url( 'en', 'Albert Einstein' )
         );
     }
 
     public function test_article_url_can_use_page_id_when_title_is_missing(): void {
         $this->assertSame(
-            'https://example.test/wikipedia/article/de?page_id=736',
+            'https://example.test/wordopedia/article/de?page_id=736',
             App::get_article_url( 'de', '', 736 )
         );
     }
 
     public function test_saved_articles_url(): void {
-        $this->assertSame( 'https://example.test/wikipedia/saved', App::get_saved_articles_url() );
+        $this->assertSame( 'https://example.test/wordopedia/saved', App::get_saved_articles_url() );
     }
 
     public function test_saved_snippets_url(): void {
-        $this->assertSame( 'https://example.test/wikipedia/snippets', App::get_saved_snippets_url() );
+        $this->assertSame( 'https://example.test/wordopedia/snippets', App::get_saved_snippets_url() );
     }
 
     public function test_settings_and_list_urls(): void {
-        $this->assertSame( 'https://example.test/wikipedia/settings', App::get_settings_url() );
-        $this->assertSame( 'https://example.test/wikipedia/list/science', App::get_list_url( 'Science' ) );
+        $this->assertSame( 'https://example.test/wordopedia/settings', App::get_settings_url() );
+        $this->assertSame( 'https://example.test/wordopedia/list/science', App::get_list_url( 'Science' ) );
     }
 
     public function test_article_allowed_html_contains_expected_article_tags(): void {
@@ -139,10 +139,10 @@ class AppHelpersTest extends TestCase {
     public function test_snippet_content_preserves_links_from_html(): void {
         $content = $this->invokePrivateStatic( 'snippet_content_for_storage', [
             'Albert relativity & science',
-            '<p>Albert <a class="mw-redirect" onclick="alert(1)" href="https://example.test/wikipedia/article/en?title=Relativity">relativity</a> &amp; science</p>',
+            '<p>Albert <a class="mw-redirect" onclick="alert(1)" href="https://example.test/wordopedia/article/en?title=Relativity">relativity</a> &amp; science</p>',
         ] );
 
-        $this->assertStringContainsString( '<a href="https://example.test/wikipedia/article/en?title=Relativity">relativity</a>', $content );
+        $this->assertStringContainsString( '<a href="https://example.test/wordopedia/article/en?title=Relativity">relativity</a>', $content );
         $this->assertStringNotContainsString( 'onclick', $content );
         $this->assertStringNotContainsString( 'mw-redirect', $content );
         $this->assertSame(
@@ -168,14 +168,14 @@ class AppHelpersTest extends TestCase {
 
     public function test_wikipedia_article_href_is_rewritten_to_app_url(): void {
         $this->assertSame(
-            'https://example.test/wikipedia/article/en?title=Albert%20Einstein#Life',
+            'https://example.test/wordopedia/article/en?title=Albert%20Einstein#Life',
             $this->invokePrivateStatic( 'app_url_from_wikipedia_href', [ '/wiki/Albert_Einstein#Life', 'en' ] )
         );
     }
 
     public function test_cross_language_wikipedia_href_is_rewritten_to_that_language(): void {
         $this->assertSame(
-            'https://example.test/wikipedia/article/de?title=Albert%20Einstein',
+            'https://example.test/wordopedia/article/de?title=Albert%20Einstein',
             $this->invokePrivateStatic( 'app_url_from_wikipedia_href', [ 'https://de.wikipedia.org/wiki/Albert_Einstein', 'en' ] )
         );
     }
@@ -201,7 +201,7 @@ class AppHelpersTest extends TestCase {
 
         $this->assertSame( 'application/json', $headers['Accept'] );
         $this->assertArrayNotHasKey( 'User-Agent', $headers );
-        $this->assertStringContainsString( 'Wikipedia WordPress App/1.0', $user_agent );
+        $this->assertStringContainsString( 'Wordopedia/1.0', $user_agent );
         $this->assertStringContainsString( 'https://example.test/', $user_agent );
     }
 

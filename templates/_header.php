@@ -10,18 +10,18 @@ $wiki_current_nav = isset( $wiki_current_nav ) ? sanitize_key( $wiki_current_nav
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo wp_app_title( isset( $page_title ) ? $page_title : __( 'Wikipedia', 'wikipedia' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_app_title escapes. ?></title>
+    <title><?php echo wp_app_title( isset( $page_title ) ? $page_title : __( 'Wordopedia', 'wikipedia' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_app_title escapes. ?></title>
     <?php wp_app_head(); ?>
 </head>
 <body>
 <?php wp_app_body_open(); ?>
 <main class="wiki-shell">
-    <nav class="wiki-topbar" aria-label="<?php esc_attr_e( 'Wikipedia app', 'wikipedia' ); ?>">
+    <nav class="wiki-topbar" aria-label="<?php esc_attr_e( 'Wordopedia app', 'wikipedia' ); ?>">
         <a class="wiki-brand" href="<?php echo esc_url( \Akirk\Wikipedia\App::get_app_url() ); ?>">
             <span class="wiki-brand-mark" aria-hidden="true">W</span>
             <span class="wiki-brand-text">
-                <span class="wiki-wordmark"><?php esc_html_e( 'Wikipedia', 'wikipedia' ); ?></span>
-                <span class="wiki-tagline"><?php esc_html_e( 'Inside WordPress', 'wikipedia' ); ?></span>
+                <span class="wiki-wordmark"><?php esc_html_e( 'Wordopedia', 'wikipedia' ); ?></span>
+                <span class="wiki-tagline"><?php esc_html_e( 'Personal encyclopedia', 'wikipedia' ); ?></span>
             </span>
         </a>
         <div class="wiki-nav">

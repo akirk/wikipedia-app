@@ -1,6 +1,6 @@
 {
-    "name": "wikipedia/wikipedia",
-    "description": "Wikipedia - A WordPress app powered by WpApp",
+    "name": "akirk/wordopedia",
+    "description": "Wordopedia - A personal encyclopedia app powered by WpApp",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require": {
