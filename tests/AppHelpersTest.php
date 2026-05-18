@@ -89,6 +89,10 @@ class AppHelpersTest extends TestCase {
         $this->assertSame( 'https://example.test/wikipedia/saved', App::get_saved_articles_url() );
     }
 
+    public function test_saved_snippets_url(): void {
+        $this->assertSame( 'https://example.test/wikipedia/snippets', App::get_saved_snippets_url() );
+    }
+
     public function test_settings_and_list_urls(): void {
         $this->assertSame( 'https://example.test/wikipedia/settings', App::get_settings_url() );
         $this->assertSame( 'https://example.test/wikipedia/list/science', App::get_list_url( 'Science' ) );

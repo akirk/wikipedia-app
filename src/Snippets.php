@@ -351,6 +351,39 @@ trait Snippets {
         }, $posts );
     }
 
+    public static function get_saved_snippet_languages(): array {
+        $posts = get_posts( [
+            'post_type'              => self::POST_TYPE_SNIPPET,
+            'post_status'            => [ 'publish', 'draft', 'private' ],
+            'posts_per_page'         => 500,
+            'fields'                 => 'ids',
+            'orderby'                => 'date',
+            'order'                  => 'DESC',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+        ] );
+
+        $languages = [];
+        foreach ( $posts as $post_id ) {
+            $language = strtolower( trim( (string) get_post_meta( (int) $post_id, self::META_LANGUAGE, true ) ) );
+            if ( '' === $language ) {
+                continue;
+            }
+
+            $language = self::normalize_language( $language );
+            if ( is_wp_error( $language ) ) {
+                continue;
+            }
+
+            $languages[ $language ] = self::get_language_label( $language );
+        }
+
+        asort( $languages, SORT_NATURAL | SORT_FLAG_CASE );
+
+        return $languages;
+    }
+
     public static function format_snippet( $post, bool $include_content = true, array $extra = [] ): array {
         if ( ! $post instanceof \WP_Post || self::POST_TYPE_SNIPPET !== $post->post_type ) {
             return [];
