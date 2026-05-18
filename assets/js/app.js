@@ -1,4 +1,18 @@
 (function () {
+    var appConfig = window.wikipediaAppConfig || {};
+    var wikipediaApiUserAgent = appConfig.apiUserAgent || '';
+    var isWordPressPlayground = !!appConfig.isPlayground;
+
+    function wikipediaFetchOptions(options) {
+        options = options || {};
+        if (!isWordPressPlayground && wikipediaApiUserAgent) {
+            options.headers = options.headers || {};
+            options.headers['Api-User-Agent'] = wikipediaApiUserAgent;
+        }
+
+        return options;
+    }
+
     function languageDisplayName(language) {
         var name = language.localname || language.label || language.name || language.code || '';
         var autonym = language.name || language.autonym || '';
@@ -177,7 +191,7 @@
                 origin: '*'
             });
 
-            fetch('https://en.wikipedia.org/w/api.php?' + params.toString(), { credentials: 'omit' })
+            fetch('https://en.wikipedia.org/w/api.php?' + params.toString(), wikipediaFetchOptions({ credentials: 'omit' }))
                 .then(function (response) {
                     return response.ok ? response.json() : null;
                 })
@@ -766,7 +780,7 @@
             var requestLanguage = currentLanguage();
             updateTabs(query);
 
-            if (!query) {
+            if (!query || query.length < 2) {
                 if (controller) {
                     controller.abort();
                 }
@@ -793,10 +807,10 @@
                 origin: '*'
             });
 
-            fetch('https://' + requestLanguage + '.wikipedia.org/w/api.php?' + params.toString(), {
+            fetch('https://' + requestLanguage + '.wikipedia.org/w/api.php?' + params.toString(), wikipediaFetchOptions({
                 signal: controller.signal,
                 credentials: 'omit'
-            })
+            }))
                 .then(function (response) {
                     return response.ok ? response.json() : null;
                 })
@@ -817,7 +831,7 @@
 
         function queueFetch(delay) {
             window.clearTimeout(timer);
-            timer = window.setTimeout(fetchResults, 'number' === typeof delay ? delay : 180);
+            timer = window.setTimeout(fetchResults, 'number' === typeof delay ? delay : 500);
         }
 
         input.addEventListener('input', function () {

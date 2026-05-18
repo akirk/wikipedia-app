@@ -46,7 +46,39 @@ if ( ! function_exists( 'get_locale' ) ) {
 
 if ( ! function_exists( 'home_url' ) ) {
     function home_url( $path = '' ) {
-        return 'https://example.test' . ( '/' === substr( $path, 0, 1 ) ? $path : '/' . $path );
+        $home = $GLOBALS['wikipedia_app_test_home_url'] ?? 'https://example.test';
+        return rtrim( $home, '/' ) . ( '/' === substr( $path, 0, 1 ) ? $path : '/' . $path );
+    }
+}
+
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+    function sanitize_text_field( $value ) {
+        return trim( strip_tags( (string) $value ) );
+    }
+}
+
+if ( ! function_exists( 'wp_json_encode' ) ) {
+    function wp_json_encode( $data, $options = 0, $depth = 512 ) {
+        return json_encode( $data, $options, $depth );
+    }
+}
+
+if ( ! function_exists( 'wp_unslash' ) ) {
+    function wp_unslash( $value ) {
+        return is_string( $value ) ? stripslashes( $value ) : $value;
+    }
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
+    function wp_remote_retrieve_header( $response, $header ) {
+        $header = strtolower( (string) $header );
+        foreach ( $response['headers'] ?? [] as $name => $value ) {
+            if ( strtolower( (string) $name ) === $header ) {
+                return $value;
+            }
+        }
+
+        return '';
     }
 }
 
