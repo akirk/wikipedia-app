@@ -9,9 +9,16 @@
 	"login": true,
 	"steps": [
 		{
-			"step": "activatePlugin",
-			"pluginName": "Wikipedia App",
-			"pluginPath": "wikipedia-app/wikipedia-app.php"
+			"step": "installPlugin",
+			"pluginData": {
+				"resource": "git:directory",
+				"url": "https://github.com/akirk/wikipedia-app",
+				"ref": "dist/main",
+				"refType": "branch"
+			},
+			"options": {
+				"targetFolderName": "wikipedia-app"
+			}
 		}
 	]
 }
