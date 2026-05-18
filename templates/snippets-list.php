@@ -102,6 +102,7 @@ include __DIR__ . '/_header.php';
             $updated_at = isset( $snippet['updated_at_display'] ) ? (string) $snippet['updated_at_display'] : '';
             $snippet_language = isset( $snippet['language'] ) ? (string) $snippet['language'] : '';
             $snippet_language_label = isset( $snippet['language_label'] ) ? (string) $snippet['language_label'] : '';
+            $can_edit_snippet = $snippet_id && $edit_url && current_user_can( 'edit_post', $snippet_id );
             ?>
             <li class="wiki-snippet wiki-snippet-browser-item" id="<?php echo esc_attr( 'wiki-snippet-' . $snippet_id ); ?>">
                 <h2 class="wiki-snippet-browser-title">
@@ -131,26 +132,18 @@ include __DIR__ . '/_header.php';
                             ?>
                         </span>
                     <?php endif; ?>
+                    <?php if ( $source_url ) : ?>
+                        <span><a href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'Source', 'wikipedia' ); ?></a></span>
+                    <?php endif; ?>
+                    <?php if ( $can_edit_snippet ) : ?>
+                        <span><a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'wikipedia' ); ?></a></span>
+                    <?php endif; ?>
                 </div>
                 <div class="wiki-snippet-content">
                     <?php if ( '' !== trim( $snippet_html ) ) : ?>
                         <?php echo wp_kses_post( $snippet_html ); ?>
                     <?php elseif ( '' !== trim( $snippet_text ) ) : ?>
                         <p><?php echo esc_html( $snippet_text ); ?></p>
-                    <?php endif; ?>
-                </div>
-                <div class="wiki-article-tools">
-                    <?php if ( $view_url ) : ?>
-                        <a class="wiki-btn secondary" href="<?php echo esc_url( $view_url ); ?>"><?php esc_html_e( 'Open snippet', 'wikipedia' ); ?></a>
-                    <?php endif; ?>
-                    <?php if ( $parent_view_url ) : ?>
-                        <a class="wiki-btn secondary" href="<?php echo esc_url( $parent_view_url ); ?>"><?php esc_html_e( 'Read article', 'wikipedia' ); ?></a>
-                    <?php endif; ?>
-                    <?php if ( $source_url ) : ?>
-                        <a class="wiki-btn secondary" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'Wikipedia', 'wikipedia' ); ?></a>
-                    <?php endif; ?>
-                    <?php if ( $snippet_id && $edit_url && current_user_can( 'edit_post', $snippet_id ) ) : ?>
-                        <a class="wiki-btn secondary" href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit snippet', 'wikipedia' ); ?></a>
                     <?php endif; ?>
                 </div>
             </li>
