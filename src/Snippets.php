@@ -10,27 +10,7 @@ trait Snippets {
 
         check_admin_referer( self::NONCE_SAVE_SNIPPET );
 
-        $text = '';
-        if ( isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ) {
-            $text = (string) wp_unslash( $_POST['text'] );
-        }
-
-        $snippet_title = '';
-        if ( isset( $_POST['snippet_title'] ) && is_scalar( $_POST['snippet_title'] ) ) {
-            $snippet_title = sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) );
-        }
-
-        $input = [
-            'parent_post_id' => isset( $_POST['parent_post_id'] ) ? absint( wp_unslash( $_POST['parent_post_id'] ) ) : 0,
-            'page_id'        => isset( $_POST['page_id'] ) ? absint( wp_unslash( $_POST['page_id'] ) ) : 0,
-            'title'          => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
-            'language'       => isset( $_POST['language'] ) ? sanitize_text_field( wp_unslash( $_POST['language'] ) ) : self::get_default_language(),
-            'post_status'    => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : '',
-            'snippet_title'  => $snippet_title,
-            'text'           => $text,
-        ];
-
-        $result = self::save_wikipedia_snippet( $input );
+        $result = self::save_wikipedia_snippet( self::snippet_save_input_from_request() );
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
@@ -50,20 +30,7 @@ trait Snippets {
         $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
         check_admin_referer( self::NONCE_UPDATE_SNIPPET . '_' . $snippet_id );
 
-        $text = '';
-        if ( isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ) {
-            $text = (string) wp_unslash( $_POST['text'] );
-        }
-
-        $snippet_title = '';
-        if ( isset( $_POST['snippet_title'] ) && is_scalar( $_POST['snippet_title'] ) ) {
-            $snippet_title = sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) );
-        }
-
-        $result = self::update_wikipedia_snippet( $snippet_id, [
-            'snippet_title' => $snippet_title,
-            'text'          => $text,
-        ] );
+        $result = self::update_wikipedia_snippet( $snippet_id, self::snippet_update_input_from_request() );
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
@@ -73,6 +40,68 @@ trait Snippets {
 
         wp_safe_redirect( self::snippet_redirect_url( $result, 'snippet_updated', $referer ) );
         exit;
+    }
+
+    public function handle_delete_snippet(): void {
+        if ( ! current_user_can( 'delete_posts' ) ) {
+            wp_die( esc_html__( 'You are not allowed to delete Wikipedia snippets.', 'wikipedia' ) );
+        }
+
+        $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+        check_admin_referer( self::NONCE_DELETE_SNIPPET . '_' . $snippet_id );
+
+        $result = self::delete_wikipedia_snippet( $snippet_id );
+        $referer = wp_get_referer() ?: self::get_app_url();
+
+        if ( is_wp_error( $result ) ) {
+            wp_safe_redirect( add_query_arg( 'wikipedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            exit;
+        }
+
+        $url = ! empty( $result['parent_view_url'] ) ? $result['parent_view_url'] : $referer;
+        wp_safe_redirect( add_query_arg( 'snippet_deleted', 1, $url ) );
+        exit;
+    }
+
+    public function ajax_save_snippet(): void {
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( [
+                'message' => __( 'You are not allowed to save Wikipedia snippets.', 'wikipedia' ),
+            ], 403 );
+        }
+
+        check_ajax_referer( self::NONCE_SAVE_SNIPPET );
+
+        $result = self::save_wikipedia_snippet( self::snippet_save_input_from_request() );
+        self::send_snippet_json_response( $result );
+    }
+
+    public function ajax_update_snippet(): void {
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( [
+                'message' => __( 'You are not allowed to update Wikipedia snippets.', 'wikipedia' ),
+            ], 403 );
+        }
+
+        $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+        check_ajax_referer( self::NONCE_UPDATE_SNIPPET . '_' . $snippet_id );
+
+        $result = self::update_wikipedia_snippet( $snippet_id, self::snippet_update_input_from_request() );
+        self::send_snippet_json_response( $result );
+    }
+
+    public function ajax_delete_snippet(): void {
+        if ( ! current_user_can( 'delete_posts' ) ) {
+            wp_send_json_error( [
+                'message' => __( 'You are not allowed to delete Wikipedia snippets.', 'wikipedia' ),
+            ], 403 );
+        }
+
+        $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+        check_ajax_referer( self::NONCE_DELETE_SNIPPET . '_' . $snippet_id );
+
+        $result = self::delete_wikipedia_snippet( $snippet_id );
+        self::send_snippet_json_response( $result );
     }
 
     public function ability_save_snippet( $input ) {
@@ -155,7 +184,7 @@ trait Snippets {
         $post_id = wp_insert_post( [
             'post_type'    => self::POST_TYPE_SNIPPET,
             'post_title'   => $snippet_title,
-            'post_content' => $text,
+            'post_content' => self::snippet_content_for_storage( $text ),
             'post_excerpt' => self::snippet_excerpt( $text, 32 ),
             'post_status'  => $post_status,
             'post_parent'  => $parent_post_id,
@@ -205,7 +234,7 @@ trait Snippets {
         $updated = wp_update_post( [
             'ID'           => $snippet_id,
             'post_title'   => $snippet_title,
-            'post_content' => $text,
+            'post_content' => self::snippet_content_for_storage( $text ),
             'post_excerpt' => self::snippet_excerpt( $text, 32 ),
             'post_status'  => $post_status,
         ], true );
@@ -220,6 +249,32 @@ trait Snippets {
             'created' => false,
             'updated' => true,
         ] );
+    }
+
+    public static function delete_wikipedia_snippet( int $snippet_id ) {
+        if ( ! current_user_can( 'delete_posts' ) ) {
+            return new \WP_Error( 'wikipedia_cannot_delete_snippet', __( 'You are not allowed to delete Wikipedia snippets.', 'wikipedia' ) );
+        }
+
+        $post = get_post( $snippet_id );
+        if ( ! $post instanceof \WP_Post || self::POST_TYPE_SNIPPET !== $post->post_type ) {
+            return new \WP_Error( 'wikipedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wikipedia' ) );
+        }
+
+        if ( ! current_user_can( 'delete_post', $snippet_id ) ) {
+            return new \WP_Error( 'wikipedia_cannot_delete_snippet', __( 'You are not allowed to delete this Wikipedia snippet.', 'wikipedia' ) );
+        }
+
+        $snippet = self::format_snippet( $post, true, [
+            'deleted' => true,
+        ] );
+        $deleted = wp_trash_post( $snippet_id );
+
+        if ( ! $deleted ) {
+            return new \WP_Error( 'wikipedia_snippet_delete_failed', __( 'Snippet could not be deleted.', 'wikipedia' ) );
+        }
+
+        return $snippet;
     }
 
     public static function get_wikipedia_snippet( int $snippet_id ) {
@@ -306,6 +361,7 @@ trait Snippets {
         $parent_view_url = $parent instanceof \WP_Post ? self::get_saved_article_view_url( $parent ) : '';
         $created_at = (string) get_post_meta( $post_id, self::META_SNIPPET_CREATED_AT, true );
         $updated_at = (string) get_post_meta( $post_id, self::META_SNIPPET_UPDATED_AT, true );
+        $text = self::snippet_plain_text_from_content( $post->post_content );
 
         $snippet = [
             'post_id'              => $post_id,
@@ -315,7 +371,7 @@ trait Snippets {
             'saved_article_title'  => $parent_title,
             'title'                => get_the_title( $post ),
             'status'               => get_post_status( $post ),
-            'summary'              => self::snippet_excerpt( $post->post_content, 32 ),
+            'summary'              => self::snippet_excerpt( $text, 32 ),
             'page_id'              => absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) ),
             'language'             => (string) get_post_meta( $post_id, self::META_LANGUAGE, true ),
             'language_label'       => self::get_language_label( (string) get_post_meta( $post_id, self::META_LANGUAGE, true ) ),
@@ -330,11 +386,13 @@ trait Snippets {
             'edit_url'             => get_edit_post_link( $post_id, '' ) ?: '',
             'created'              => false,
             'updated'              => false,
+            'deleted'              => false,
         ];
 
         if ( $include_content ) {
             $snippet['content'] = $post->post_content;
-            $snippet['text'] = $post->post_content;
+            $snippet['html'] = self::snippet_display_html( $post->post_content );
+            $snippet['text'] = $text;
             $snippet['original_text'] = (string) get_post_meta( $post_id, self::META_SNIPPET_ORIGINAL_TEXT, true );
         }
 
@@ -441,6 +499,50 @@ trait Snippets {
         return $url;
     }
 
+    private static function snippet_save_input_from_request(): array {
+        return [
+            'parent_post_id' => isset( $_POST['parent_post_id'] ) ? absint( wp_unslash( $_POST['parent_post_id'] ) ) : 0,
+            'page_id'        => isset( $_POST['page_id'] ) ? absint( wp_unslash( $_POST['page_id'] ) ) : 0,
+            'title'          => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+            'language'       => isset( $_POST['language'] ) ? sanitize_text_field( wp_unslash( $_POST['language'] ) ) : self::get_default_language(),
+            'post_status'    => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : '',
+            'snippet_title'  => isset( $_POST['snippet_title'] ) ? sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) ) : '',
+            'text'           => isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ? (string) wp_unslash( $_POST['text'] ) : '',
+        ];
+    }
+
+    private static function snippet_update_input_from_request(): array {
+        return [
+            'snippet_title' => isset( $_POST['snippet_title'] ) ? sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) ) : '',
+            'text'          => isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ? (string) wp_unslash( $_POST['text'] ) : '',
+        ];
+    }
+
+    private static function send_snippet_json_response( $result ): void {
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( [
+                'message' => $result->get_error_message(),
+                'code'    => $result->get_error_code(),
+            ], 400 );
+        }
+
+        if ( ! is_array( $result ) ) {
+            wp_send_json_error( [
+                'message' => __( 'Snippet could not be saved.', 'wikipedia' ),
+            ], 400 );
+        }
+
+        if ( ! empty( $result['post_id'] ) ) {
+            $post_id = absint( $result['post_id'] );
+            $result['update_nonce'] = wp_create_nonce( self::NONCE_UPDATE_SNIPPET . '_' . $post_id );
+            $result['delete_nonce'] = wp_create_nonce( self::NONCE_DELETE_SNIPPET . '_' . $post_id );
+        }
+
+        wp_send_json_success( [
+            'snippet' => $result,
+        ] );
+    }
+
     private static function input_text_value( array $input, array $keys ): string {
         foreach ( $keys as $key ) {
             if ( isset( $input[ $key ] ) && is_scalar( $input[ $key ] ) ) {
@@ -454,6 +556,9 @@ trait Snippets {
     private static function normalize_snippet_text( string $text ): string {
         $charset = function_exists( 'get_option' ) ? ( get_option( 'blog_charset' ) ?: 'UTF-8' ) : 'UTF-8';
         $text = html_entity_decode( $text, ENT_QUOTES, $charset );
+        $text = preg_replace( '~<\s*br\s*/?>~i', "\n", $text );
+        $text = preg_replace( '~</p\s*>~i', "\n\n", is_string( $text ) ? $text : '' );
+        $text = preg_replace( '~<!--.*?-->~s', '', is_string( $text ) ? $text : '' );
         $text = function_exists( 'wp_strip_all_tags' ) ? wp_strip_all_tags( $text ) : strip_tags( $text );
         $text = str_replace( "\xc2\xa0", ' ', $text );
         $text = str_replace( [ "\r\n", "\r" ], "\n", $text );
@@ -468,7 +573,6 @@ trait Snippets {
 
     private static function build_snippet_title( \WP_Post $parent, string $text ): string {
         $article_title = get_the_title( $parent );
-        $summary = self::snippet_excerpt( $text, 8 );
         $title = $article_title
             ? sprintf(
                 /* translators: %s: saved article title */
@@ -477,11 +581,57 @@ trait Snippets {
             )
             : __( 'Wikipedia snippet', 'wikipedia' );
 
-        if ( $summary ) {
-            $title .= ': ' . $summary;
+        return sanitize_text_field( $title );
+    }
+
+    private static function snippet_content_for_storage( string $text ): string {
+        $text = self::normalize_snippet_text( $text );
+        if ( '' === $text ) {
+            return '';
         }
 
-        return sanitize_text_field( $title );
+        $paragraphs = preg_split( "/\n{2,}/", $text );
+        $paragraphs = is_array( $paragraphs ) ? $paragraphs : [ $text ];
+        $blocks = [];
+
+        foreach ( $paragraphs as $paragraph ) {
+            $lines = explode( "\n", trim( $paragraph ) );
+            $lines = array_map( function( $line ) {
+                return self::snippet_escape_html( $line );
+            }, $lines );
+            $html = '<p>' . implode( '<br>', $lines ) . '</p>';
+            $blocks[] = "<!-- wp:paragraph -->\n" . $html . "\n<!-- /wp:paragraph -->";
+        }
+
+        return implode( "\n\n", $blocks );
+    }
+
+    private static function snippet_plain_text_from_content( string $content ): string {
+        if ( function_exists( 'strip_blocks' ) ) {
+            $content = strip_blocks( $content );
+        }
+
+        return self::normalize_snippet_text( $content );
+    }
+
+    private static function snippet_display_html( string $content ): string {
+        if ( function_exists( 'do_blocks' ) ) {
+            $content = do_blocks( $content );
+        }
+
+        if ( function_exists( 'wp_kses_post' ) ) {
+            return wp_kses_post( $content );
+        }
+
+        return strip_tags( $content, '<p><br><strong><em><b><i><a><code><pre><blockquote><ul><ol><li>' );
+    }
+
+    private static function snippet_escape_html( string $text ): string {
+        if ( function_exists( 'esc_html' ) ) {
+            return esc_html( $text );
+        }
+
+        return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
     }
 
     private static function snippet_excerpt( string $text, int $words = 24 ): string {
@@ -591,10 +741,12 @@ trait Snippets {
             'edit_url'              => [ 'type' => 'string' ],
             'created'               => [ 'type' => 'boolean' ],
             'updated'               => [ 'type' => 'boolean' ],
+            'deleted'               => [ 'type' => 'boolean' ],
         ];
 
         if ( $include_content ) {
             $properties['content'] = [ 'type' => 'string' ];
+            $properties['html'] = [ 'type' => 'string' ];
             $properties['text'] = [ 'type' => 'string' ];
             $properties['original_text'] = [ 'type' => 'string' ];
         }

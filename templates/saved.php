@@ -40,6 +40,9 @@ include __DIR__ . '/_header.php';
 <?php if ( isset( $_GET['snippet_updated'] ) ) : ?>
     <div class="wiki-notice success"><?php esc_html_e( 'Snippet updated.', 'wikipedia' ); ?></div>
 <?php endif; ?>
+<?php if ( isset( $_GET['snippet_deleted'] ) ) : ?>
+    <div class="wiki-notice success"><?php esc_html_e( 'Snippet deleted.', 'wikipedia' ); ?></div>
+<?php endif; ?>
 
 <?php
 $wiki_saved_search = '';

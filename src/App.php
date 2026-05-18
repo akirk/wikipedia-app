@@ -30,6 +30,7 @@ class App extends BaseApp {
     const NONCE_REFETCH_ARTICLE = 'wikipedia_refetch_article';
     const NONCE_SAVE_SNIPPET    = 'wikipedia_save_snippet';
     const NONCE_UPDATE_SNIPPET  = 'wikipedia_update_snippet';
+    const NONCE_DELETE_SNIPPET  = 'wikipedia_delete_snippet';
     const NONCE_SAVE_SETTINGS   = 'wikipedia_save_settings';
 
     public function __construct() {
@@ -44,6 +45,10 @@ class App extends BaseApp {
         add_action( 'admin_post_wikipedia_refetch_article', [ $this, 'handle_refetch_article' ] );
         add_action( 'admin_post_wikipedia_save_snippet', [ $this, 'handle_save_snippet' ] );
         add_action( 'admin_post_wikipedia_update_snippet', [ $this, 'handle_update_snippet' ] );
+        add_action( 'admin_post_wikipedia_delete_snippet', [ $this, 'handle_delete_snippet' ] );
+        add_action( 'wp_ajax_wikipedia_save_snippet', [ $this, 'ajax_save_snippet' ] );
+        add_action( 'wp_ajax_wikipedia_update_snippet', [ $this, 'ajax_update_snippet' ] );
+        add_action( 'wp_ajax_wikipedia_delete_snippet', [ $this, 'ajax_delete_snippet' ] );
         add_action( 'admin_post_wikipedia_save_settings', [ $this, 'handle_save_settings' ] );
         add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', [ $this, 'register_admin_columns' ] );
         add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', [ $this, 'render_admin_column' ], 10, 2 );

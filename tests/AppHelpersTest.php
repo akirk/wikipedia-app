@@ -119,6 +119,18 @@ class AppHelpersTest extends TestCase {
         );
     }
 
+    public function test_snippet_content_is_stored_as_blocks_and_read_as_text(): void {
+        $content = $this->invokePrivateStatic( 'snippet_content_for_storage', [ "one\ntwo\n\nthree & four" ] );
+
+        $this->assertStringContainsString( '<!-- wp:paragraph -->', $content );
+        $this->assertStringContainsString( '<p>one<br>two</p>', $content );
+        $this->assertStringContainsString( '<p>three &amp; four</p>', $content );
+        $this->assertSame(
+            "one\ntwo\n\nthree & four",
+            $this->invokePrivateStatic( 'snippet_plain_text_from_content', [ $content ] )
+        );
+    }
+
     public function test_wikipedia_article_href_is_rewritten_to_app_url(): void {
         $this->assertSame(
             'https://example.test/wikipedia/article/en?title=Albert%20Einstein#Life',
