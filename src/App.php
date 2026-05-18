@@ -33,6 +33,10 @@ class App extends BaseApp {
     const NONCE_DELETE_SNIPPET  = 'wikipedia_delete_snippet';
     const NONCE_SAVE_SETTINGS   = 'wikipedia_save_settings';
 
+    const WIKIPEDIA_CACHE_SEARCH   = 300;
+    const WIKIPEDIA_CACHE_ARTICLE  = 3600;
+    const WIKIPEDIA_CACHE_LANGUAGE = 86400;
+
     public function __construct() {
         $this->app = new WpApp( $this->get_template_dir(), $this->get_url_path(), [
             'require_login' => true,
@@ -86,6 +90,15 @@ class App extends BaseApp {
             [],
             file_exists( $script_path ) ? (string) filemtime( $script_path ) : false,
             true
+        );
+
+        wp_localize_script(
+            'wikipedia-app',
+            'wikipediaAppConfig',
+            [
+                'apiUserAgent' => self::wikipedia_user_agent(),
+                'isPlayground' => self::is_wordpress_playground(),
+            ]
         );
     }
 
@@ -823,7 +836,7 @@ class App extends BaseApp {
             'srprop'        => 'snippet|wordcount|timestamp|size',
             'formatversion' => 2,
             'utf8'          => 1,
-        ] );
+        ], self::WIKIPEDIA_CACHE_SEARCH );
 
         if ( is_wp_error( $data ) ) {
             return $data;
@@ -869,12 +882,14 @@ class App extends BaseApp {
             return new \WP_Error( 'wikipedia_missing_article', __( 'Provide a Wikipedia page ID or title.', 'wikipedia' ) );
         }
 
-        $metadata = self::fetch_article_metadata( $language, $page_id, $title );
+        $force_refresh = ! empty( $input['force_refresh'] );
+
+        $metadata = self::fetch_article_metadata( $language, $page_id, $title, $force_refresh );
         if ( is_wp_error( $metadata ) ) {
             return $metadata;
         }
 
-        $html = self::fetch_article_html( $language, $metadata['page_id'], $metadata['title'] );
+        $html = self::fetch_article_html( $language, $metadata['page_id'], $metadata['title'], $force_refresh );
         if ( is_wp_error( $html ) ) {
             return $html;
         }
@@ -885,7 +900,7 @@ class App extends BaseApp {
         return $metadata;
     }
 
-    private static function fetch_article_metadata( string $language, int $page_id = 0, string $title = '' ) {
+    private static function fetch_article_metadata( string $language, int $page_id = 0, string $title = '', bool $force_refresh = false ) {
         $args = [
             'action'          => 'query',
             'prop'            => 'extracts|info|pageimages|langlinks',
@@ -906,7 +921,7 @@ class App extends BaseApp {
             $args['titles'] = $title;
         }
 
-        $data = self::request_wikipedia( $language, $args );
+        $data = self::request_wikipedia( $language, $args, self::WIKIPEDIA_CACHE_ARTICLE, $force_refresh );
         if ( is_wp_error( $data ) ) {
             return $data;
         }
@@ -939,7 +954,7 @@ class App extends BaseApp {
         ];
     }
 
-    private static function fetch_article_html( string $language, int $page_id, string $title ) {
+    private static function fetch_article_html( string $language, int $page_id, string $title, bool $force_refresh = false ) {
         $args = [
             'action'             => 'parse',
             'prop'               => 'text',
@@ -956,7 +971,7 @@ class App extends BaseApp {
             $args['page'] = $title;
         }
 
-        $data = self::request_wikipedia( $language, $args );
+        $data = self::request_wikipedia( $language, $args, self::WIKIPEDIA_CACHE_ARTICLE, $force_refresh );
         if ( is_wp_error( $data ) ) {
             return $data;
         }
@@ -1040,9 +1055,10 @@ class App extends BaseApp {
         }
 
         return self::save_wikipedia_article( [
-            'page_id'     => $page_id,
-            'language'    => $language,
-            'post_status' => get_post_status( $post ) ?: 'publish',
+            'page_id'       => $page_id,
+            'language'      => $language,
+            'post_status'   => get_post_status( $post ) ?: 'publish',
+            'force_refresh' => true,
         ] );
     }
 
@@ -1370,21 +1386,31 @@ class App extends BaseApp {
         return $metadata['available_languages'];
     }
 
-    private static function request_wikipedia( string $language, array $args ) {
+    private static function request_wikipedia( string $language, array $args, int $cache_ttl = 0, bool $force_refresh = false ) {
         $language = self::normalize_language( $language );
         if ( is_wp_error( $language ) ) {
             return $language;
         }
 
         $args['format'] = 'json';
+        $args['origin'] = '*';
+        ksort( $args );
+
+        $cache_key = $cache_ttl > 0 ? self::wikipedia_cache_key( $language, $args ) : '';
+        if ( $cache_key && ! $force_refresh && function_exists( 'get_transient' ) ) {
+            $cached = get_transient( $cache_key );
+            if ( is_array( $cached ) ) {
+                return $cached;
+            }
+        }
+
         $url = add_query_arg( $args, 'https://' . $language . '.wikipedia.org/w/api.php' );
 
         $response = wp_remote_get( $url, [
             'timeout'     => 20,
             'redirection' => 3,
-            'headers'     => [
-                'User-Agent' => 'Wikipedia WordPress App/1.0; ' . home_url( '/' ),
-            ],
+            'user-agent'  => self::is_wordpress_playground() ? '' : self::wikipedia_user_agent(),
+            'headers'     => self::wikipedia_request_headers(),
         ] );
 
         if ( is_wp_error( $response ) ) {
@@ -1392,18 +1418,13 @@ class App extends BaseApp {
         }
 
         $status_code = wp_remote_retrieve_response_code( $response );
+        $body        = wp_remote_retrieve_body( $response );
+        $data        = json_decode( $body, true );
+
         if ( $status_code < 200 || $status_code >= 300 ) {
-            return new \WP_Error(
-                'wikipedia_http_error',
-                sprintf(
-                    /* translators: %d: HTTP response status code. */
-                    __( 'Wikipedia returned HTTP %d.', 'wikipedia' ),
-                    $status_code
-                )
-            );
+            return self::wikipedia_http_error( $status_code, is_array( $data ) ? $data : [], $response );
         }
 
-        $data = json_decode( wp_remote_retrieve_body( $response ), true );
         if ( ! is_array( $data ) ) {
             return new \WP_Error( 'wikipedia_bad_response', __( 'Wikipedia returned an unreadable response.', 'wikipedia' ) );
         }
@@ -1412,7 +1433,67 @@ class App extends BaseApp {
             return new \WP_Error( 'wikipedia_api_error', sanitize_text_field( $data['error']['info'] ) );
         }
 
+        if ( $cache_key && function_exists( 'set_transient' ) ) {
+            set_transient( $cache_key, $data, $cache_ttl );
+        }
+
         return $data;
+    }
+
+    private static function wikipedia_request_headers(): array {
+        $headers = [
+            'Accept' => 'application/json',
+        ];
+
+        return apply_filters( 'wikipedia_app_wikipedia_request_headers', $headers );
+    }
+
+    private static function wikipedia_user_agent(): string {
+        return 'Wikipedia WordPress App/1.0 (' . home_url( '/' ) . ')';
+    }
+
+    private static function is_wordpress_playground(): bool {
+        return defined( 'PLAYGROUND_AUTO_LOGIN_AS_USER' );
+    }
+
+    private static function wikipedia_cache_key( string $language, array $args ): string {
+        return 'wikipedia_app_api_' . md5( $language . ':' . wp_json_encode( $args ) );
+    }
+
+    private static function wikipedia_http_error( int $status_code, array $data, $response ) {
+        if ( isset( $data['error']['info'] ) ) {
+            return new \WP_Error( 'wikipedia_api_error', sanitize_text_field( $data['error']['info'] ) );
+        }
+
+        $retry_after = self::wikipedia_retry_after( $response );
+        if ( $retry_after && in_array( $status_code, [ 429, 503 ], true ) ) {
+            return new \WP_Error(
+                'wikipedia_rate_limited',
+                sprintf(
+                    /* translators: %s: Retry-After header value. */
+                    __( 'Wikipedia asked this app to slow down. Try again after %s.', 'wikipedia' ),
+                    $retry_after
+                )
+            );
+        }
+
+        return new \WP_Error(
+            'wikipedia_http_error',
+            sprintf(
+                /* translators: %d: HTTP response status code. */
+                __( 'Wikipedia returned HTTP %d.', 'wikipedia' ),
+                $status_code
+            )
+        );
+    }
+
+    private static function wikipedia_retry_after( $response ): string {
+        if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
+            return '';
+        }
+
+        $retry_after = wp_remote_retrieve_header( $response, 'retry-after' );
+        return is_scalar( $retry_after ) ? sanitize_text_field( (string) $retry_after ) : '';
     }
 
     public static function normalize_language( string $language = '' ) {
@@ -1533,7 +1614,7 @@ class App extends BaseApp {
         ksort( $languages, SORT_NATURAL | SORT_FLAG_CASE );
         $languages = $languages ?: $fallback;
         if ( function_exists( 'set_transient' ) ) {
-            set_transient( $cache_key, $languages, defined( 'DAY_IN_SECONDS' ) ? DAY_IN_SECONDS : 86400 );
+            set_transient( $cache_key, $languages, self::WIKIPEDIA_CACHE_LANGUAGE );
         }
 
         return apply_filters( 'wikipedia_app_languages', $languages );

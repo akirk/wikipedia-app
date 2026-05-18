@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 class AppHelpersTest extends TestCase {
     protected function tearDown(): void {
         unset( $GLOBALS['wikipedia_app_test_user_locale'] );
+        unset( $GLOBALS['wikipedia_app_test_home_url'] );
     }
 
     /** @dataProvider localeLanguages */
@@ -158,6 +159,51 @@ class AppHelpersTest extends TestCase {
         $this->assertStringNotContainsString( '<style', $cleaned );
         $this->assertStringNotContainsString( '<link', $cleaned );
         $this->assertStringContainsString( 'Article body', $cleaned );
+    }
+
+    public function test_wikipedia_request_headers_identify_normal_wordpress_sites(): void {
+        $headers = $this->invokePrivateStatic( 'wikipedia_request_headers', [] );
+        $user_agent = $this->invokePrivateStatic( 'wikipedia_user_agent', [] );
+
+        $this->assertSame( 'application/json', $headers['Accept'] );
+        $this->assertArrayNotHasKey( 'User-Agent', $headers );
+        $this->assertStringContainsString( 'Wikipedia WordPress App/1.0', $user_agent );
+        $this->assertStringContainsString( 'https://example.test/', $user_agent );
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function test_wordpress_playground_detection_uses_playground_constant(): void {
+        if ( ! defined( 'PLAYGROUND_AUTO_LOGIN_AS_USER' ) ) {
+            define( 'PLAYGROUND_AUTO_LOGIN_AS_USER', 1 );
+        }
+
+        $this->assertTrue( $this->invokePrivateStatic( 'is_wordpress_playground', [] ) );
+    }
+
+    public function test_wikipedia_http_error_prefers_api_error_body(): void {
+        $error = $this->invokePrivateStatic( 'wikipedia_http_error', [
+            400,
+            [ 'error' => [ 'info' => '<strong>Bad request</strong>' ] ],
+            [],
+        ] );
+
+        $this->assertInstanceOf( WP_Error::class, $error );
+        $this->assertSame( 'wikipedia_api_error', $error->get_error_code() );
+        $this->assertSame( 'Bad request', $error->get_error_message() );
+    }
+
+    public function test_wikipedia_http_error_reports_retry_after_for_rate_limits(): void {
+        $error = $this->invokePrivateStatic( 'wikipedia_http_error', [
+            429,
+            [],
+            [ 'headers' => [ 'retry-after' => '60' ] ],
+        ] );
+
+        $this->assertInstanceOf( WP_Error::class, $error );
+        $this->assertSame( 'wikipedia_rate_limited', $error->get_error_code() );
+        $this->assertStringContainsString( '60', $error->get_error_message() );
     }
 
     private function invokePrivateStatic( string $method, array $args ) {
