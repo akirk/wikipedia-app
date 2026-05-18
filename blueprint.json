@@ -12,12 +12,12 @@
 			"step": "installPlugin",
 			"pluginData": {
 				"resource": "git:directory",
-				"url": "https://github.com/akirk/wikipedia-app",
+				"url": "https://github.com/akirk/wordopedia",
 				"ref": "dist/main",
 				"refType": "branch"
 			},
 			"options": {
-				"targetFolderName": "wikipedia-app"
+				"targetFolderName": "wordopedia"
 			}
 		}
 	]
