@@ -7,6 +7,9 @@ use WpApp\WpApp;
 
 class App extends BaseApp {
     const POST_TYPE = 'wikipedia_article';
+    const TAX_LIST  = 'wikipedia_list';
+
+    const USER_META_LANGUAGES = '_wikipedia_preferred_languages';
 
     const META_PAGE_ID        = '_wikipedia_page_id';
     const META_LANGUAGE       = '_wikipedia_language';
@@ -19,6 +22,7 @@ class App extends BaseApp {
 
     const NONCE_SAVE_ARTICLE    = 'wikipedia_save_article';
     const NONCE_REFETCH_ARTICLE = 'wikipedia_refetch_article';
+    const NONCE_SAVE_SETTINGS   = 'wikipedia_save_settings';
 
     public function __construct() {
         $this->app = new WpApp( $this->get_template_dir(), $this->get_url_path(), [
@@ -30,6 +34,7 @@ class App extends BaseApp {
         add_action( 'init', [ $this, 'register_post_types' ] );
         add_action( 'admin_post_wikipedia_save_article', [ $this, 'handle_save_article' ] );
         add_action( 'admin_post_wikipedia_refetch_article', [ $this, 'handle_refetch_article' ] );
+        add_action( 'admin_post_wikipedia_save_settings', [ $this, 'handle_save_settings' ] );
         add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', [ $this, 'register_admin_columns' ] );
         add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', [ $this, 'render_admin_column' ], 10, 2 );
         add_action( 'wp_abilities_api_categories_init', [ $this, 'register_ability_category' ] );
@@ -53,8 +58,10 @@ class App extends BaseApp {
     protected function setup_routes(): void {
         $this->app->route( 'article/{language}', 'article.php' );
         $this->app->route( 'saved', 'saved-list.php' );
+        $this->app->route( 'list/{slug}', 'saved-list.php' );
         $this->app->route( 'saved/{id}', 'saved.php' );
         $this->app->route( 'saved/{slug}', 'saved.php' );
+        $this->app->route( 'settings', 'settings.php' );
     }
 
     protected function setup_menu(): void {
@@ -62,6 +69,7 @@ class App extends BaseApp {
 
         $this->app->add_menu_item( 'search', __( 'Search', 'wikipedia' ), $home );
         $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wikipedia' ), self::get_saved_articles_url() );
+        $this->app->add_menu_item( 'settings', __( 'Settings', 'wikipedia' ), self::get_settings_url() );
     }
 
     public function register_post_types(): void {
@@ -87,6 +95,26 @@ class App extends BaseApp {
             'map_meta_cap'        => true,
             'exclude_from_search' => true,
             'rewrite'             => false,
+        ] );
+
+        register_taxonomy( self::TAX_LIST, self::POST_TYPE, [
+            'labels' => [
+                'name'          => __( 'Lists', 'wikipedia' ),
+                'singular_name' => __( 'List', 'wikipedia' ),
+                'search_items'  => __( 'Search Lists', 'wikipedia' ),
+                'all_items'     => __( 'All Lists', 'wikipedia' ),
+                'edit_item'     => __( 'Edit List', 'wikipedia' ),
+                'update_item'   => __( 'Update List', 'wikipedia' ),
+                'add_new_item'  => __( 'Add New List', 'wikipedia' ),
+                'new_item_name' => __( 'New List Name', 'wikipedia' ),
+                'menu_name'     => __( 'Lists', 'wikipedia' ),
+            ],
+            'public'            => false,
+            'show_ui'           => true,
+            'show_admin_column' => true,
+            'show_in_rest'      => true,
+            'hierarchical'      => true,
+            'rewrite'           => false,
         ] );
 
         $this->register_post_meta();
@@ -211,6 +239,23 @@ class App extends BaseApp {
         exit;
     }
 
+    public function handle_save_settings(): void {
+        if ( ! current_user_can( 'read' ) ) {
+            wp_die( esc_html__( 'You are not allowed to update Wikipedia settings.', 'wikipedia' ) );
+        }
+
+        check_admin_referer( self::NONCE_SAVE_SETTINGS );
+
+        $languages = isset( $_POST['languages'] ) && is_array( $_POST['languages'] )
+            ? wp_unslash( $_POST['languages'] )
+            : [];
+        $languages = self::normalize_language_list( $languages );
+
+        update_user_meta( get_current_user_id(), self::USER_META_LANGUAGES, $languages );
+        wp_safe_redirect( add_query_arg( 'settings_saved', 1, self::get_settings_url() ) );
+        exit;
+    }
+
     public function register_ability_category(): void {
         if ( ! function_exists( 'wp_register_ability_category' ) ) {
             return;
@@ -332,6 +377,10 @@ class App extends BaseApp {
                     'language' => [
                         'type'        => 'string',
                         'description' => 'Optional Wikipedia language subdomain to filter saved articles.',
+                    ],
+                    'list'     => [
+                        'type'        => 'string',
+                        'description' => 'Optional saved article list slug to filter saved articles.',
                     ],
                     'limit'    => [
                         'type'        => 'integer',
@@ -475,10 +524,11 @@ class App extends BaseApp {
         $input    = is_array( $input ) ? $input : [];
         $search   = isset( $input['search'] ) ? sanitize_text_field( $input['search'] ) : '';
         $language = isset( $input['language'] ) ? sanitize_text_field( $input['language'] ) : '';
+        $list     = isset( $input['list'] ) ? sanitize_title( $input['list'] ) : '';
         $limit    = isset( $input['limit'] ) ? absint( $input['limit'] ) : 20;
 
         return [
-            'articles' => self::list_saved_articles( $search, $limit, $language ),
+            'articles' => self::list_saved_articles( $search, $limit, $language, $list ),
         ];
     }
 
@@ -511,7 +561,7 @@ class App extends BaseApp {
     }
 
     public function register_ai_assistant_ability_domains( array $domains ): array {
-        $domains['wikipedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, local article source, refetch Wikipedia article';
+        $domains['wikipedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article';
         return $domains;
     }
 
@@ -542,6 +592,15 @@ class App extends BaseApp {
 
     public static function get_saved_articles_url(): string {
         return self::get_app_url( 'saved' );
+    }
+
+    public static function get_settings_url(): string {
+        return self::get_app_url( 'settings' );
+    }
+
+    public static function get_list_url( $list ): string {
+        $slug = is_object( $list ) && isset( $list->slug ) ? (string) $list->slug : (string) $list;
+        return self::get_app_url( 'list/' . sanitize_title( $slug ) );
     }
 
     public static function get_article_url( string $language, string $title = '', int $page_id = 0 ): string {
@@ -819,7 +878,7 @@ class App extends BaseApp {
         update_post_meta( $post_id, self::META_REFETCHED_AT, current_time( 'mysql' ) );
     }
 
-    public static function list_saved_articles( string $search = '', int $limit = 20, string $language = '' ): array {
+    public static function list_saved_articles( string $search = '', int $limit = 20, string $language = '', string $list = '' ): array {
         $limit = max( 1, min( 50, absint( $limit ) ) );
         $args = [
             'post_type'      => self::POST_TYPE,
@@ -845,6 +904,17 @@ class App extends BaseApp {
                     ],
                 ];
             }
+        }
+
+        $list = sanitize_title( $list );
+        if ( '' !== $list ) {
+            $args['tax_query'] = [
+                [
+                    'taxonomy' => self::TAX_LIST,
+                    'field'    => 'slug',
+                    'terms'    => $list,
+                ],
+            ];
         }
 
         $posts = get_posts( $args );
@@ -885,6 +955,7 @@ class App extends BaseApp {
             'live_app_url'        => self::get_article_url( $language, get_the_title( $post ), $page_id ),
             'app_url'             => self::get_article_url( $language, get_the_title( $post ), $page_id ),
             'edit_url'            => get_edit_post_link( $post_id, '' ) ?: '',
+            'lists'               => self::format_article_lists( $post_id ),
             'available_languages' => [],
         ];
 
@@ -894,6 +965,22 @@ class App extends BaseApp {
         }
 
         return array_merge( $article, $extra );
+    }
+
+    private static function format_article_lists( int $post_id ): array {
+        $terms = get_the_terms( $post_id, self::TAX_LIST );
+        if ( ! is_array( $terms ) || is_wp_error( $terms ) ) {
+            return [];
+        }
+
+        return array_map( function( $term ) {
+            return [
+                'id'       => (int) $term->term_id,
+                'name'     => (string) $term->name,
+                'slug'     => (string) $term->slug,
+                'view_url' => self::get_list_url( $term ),
+            ];
+        }, $terms );
     }
 
     public static function find_saved_article_id( int $page_id, string $language = '' ): int {
@@ -1072,6 +1159,46 @@ class App extends BaseApp {
             'uk'     => __( 'Ukrainian', 'wikipedia' ),
             'simple' => __( 'Simple English', 'wikipedia' ),
         ] );
+    }
+
+    public static function normalize_language_list( array $languages ): array {
+        $normalized = [];
+
+        foreach ( $languages as $language ) {
+            if ( ! is_scalar( $language ) ) {
+                continue;
+            }
+
+            $language = self::normalize_language( (string) $language );
+            if ( is_wp_error( $language ) || in_array( $language, $normalized, true ) ) {
+                continue;
+            }
+
+            $normalized[] = $language;
+            if ( count( $normalized ) >= 8 ) {
+                break;
+            }
+        }
+
+        return $normalized;
+    }
+
+    public static function get_user_languages( int $user_id = 0 ): array {
+        $user_id = $user_id ?: get_current_user_id();
+        $stored = get_user_meta( $user_id, self::USER_META_LANGUAGES, true );
+        $languages = is_array( $stored ) ? self::normalize_language_list( $stored ) : [];
+
+        if ( ! $languages ) {
+            $languages = self::normalize_language_list( [ self::get_default_language(), 'en' ] );
+        }
+
+        $default_language = self::get_default_language();
+        if ( ! in_array( $default_language, $languages, true ) ) {
+            array_unshift( $languages, $default_language );
+            $languages = self::normalize_language_list( $languages );
+        }
+
+        return $languages;
     }
 
     public static function get_language_label( string $language ): string {
@@ -1419,6 +1546,18 @@ class App extends BaseApp {
             'view_url'         => [ 'type' => 'string' ],
             'live_app_url'     => [ 'type' => 'string' ],
             'edit_url'         => [ 'type' => 'string' ],
+            'lists'            => [
+                'type'  => 'array',
+                'items' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'id'       => [ 'type' => 'integer' ],
+                        'name'     => [ 'type' => 'string' ],
+                        'slug'     => [ 'type' => 'string' ],
+                        'view_url' => [ 'type' => 'string' ],
+                    ],
+                ],
+            ],
             'created'          => [ 'type' => 'boolean' ],
             'updated'          => [ 'type' => 'boolean' ],
         ];

@@ -33,14 +33,21 @@ if ( $page_id || '' !== $title ) {
 }
 
 $page_title = $article ? $article['title'] : __( 'Wikipedia article', 'wikipedia' );
+if ( $article ) {
+    $wiki_article_actions = [
+        'article'       => $article,
+        'is_saved_view' => false,
+    ];
+}
 include __DIR__ . '/_header.php';
 ?>
-<form class="wiki-search" method="get" action="<?php echo esc_url( App::get_app_url() ); ?>">
-    <label>
+<form class="wiki-search wiki-wikipedia-search" method="get" action="<?php echo esc_url( App::get_app_url() ); ?>" data-wiki-autocomplete data-article-base="<?php echo esc_url( App::get_app_url( 'article/' ) ); ?>">
+    <label class="wiki-search-field">
         <span><?php esc_html_e( 'Search', 'wikipedia' ); ?></span>
-        <input type="search" name="q" value="<?php echo esc_attr( $title ); ?>" autocomplete="off">
+        <input type="search" name="q" value="<?php echo esc_attr( $title ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search Wikipedia', 'wikipedia' ); ?>" data-wiki-autocomplete-input aria-autocomplete="list" aria-expanded="false" aria-controls="wiki-search-suggestions-article">
+        <div class="wiki-autocomplete" id="wiki-search-suggestions-article" role="listbox" hidden></div>
     </label>
-    <label>
+    <label class="wiki-search-language">
         <span><?php esc_html_e( 'Language', 'wikipedia' ); ?></span>
         <select name="language">
             <?php foreach ( App::get_supported_languages() as $code => $label ) : ?>
@@ -48,8 +55,12 @@ include __DIR__ . '/_header.php';
             <?php endforeach; ?>
         </select>
     </label>
-    <button class="wiki-btn" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
+    <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
 </form>
+<?php
+$language_tabs_query = $title;
+include __DIR__ . '/_language-tabs.php';
+?>
 
 <?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>
     <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>

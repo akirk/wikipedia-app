@@ -67,26 +67,17 @@ uksort( $saved_articles_by_letter, function( $a, $b ) {
 $page_title = __( 'Wikipedia', 'wikipedia' );
 include __DIR__ . '/_header.php';
 ?>
-<div class="wiki-page-head">
-    <div>
-        <h1><?php esc_html_e( 'Wikipedia', 'wikipedia' ); ?></h1>
-        <p class="wiki-subtitle"><?php esc_html_e( 'Search, read, follow links, switch article languages, and save articles.', 'wikipedia' ); ?></p>
-    </div>
-    <div class="wiki-actions">
-        <a class="wiki-btn secondary" href="<?php echo esc_url( App::get_saved_articles_url() ); ?>"><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></a>
-    </div>
-</div>
-
 <?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>
     <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
 <?php endif; ?>
 
-<form class="wiki-search" method="get" action="<?php echo esc_url( App::get_app_url() ); ?>">
-    <label>
+<form class="wiki-search wiki-wikipedia-search" method="get" action="<?php echo esc_url( App::get_app_url() ); ?>" data-wiki-autocomplete data-article-base="<?php echo esc_url( App::get_app_url( 'article/' ) ); ?>">
+    <label class="wiki-search-field">
         <span><?php esc_html_e( 'Search', 'wikipedia' ); ?></span>
-        <input type="search" name="q" value="<?php echo esc_attr( $query ); ?>" autocomplete="off">
+        <input type="search" name="q" value="<?php echo esc_attr( $query ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search Wikipedia', 'wikipedia' ); ?>" data-wiki-autocomplete-input aria-autocomplete="list" aria-expanded="false" aria-controls="wiki-search-suggestions-home">
+        <div class="wiki-autocomplete" id="wiki-search-suggestions-home" role="listbox" hidden></div>
     </label>
-    <label>
+    <label class="wiki-search-language">
         <span><?php esc_html_e( 'Language', 'wikipedia' ); ?></span>
         <select name="language">
             <?php foreach ( $languages as $code => $label ) : ?>
@@ -94,8 +85,12 @@ include __DIR__ . '/_header.php';
             <?php endforeach; ?>
         </select>
     </label>
-    <button class="wiki-btn" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
+    <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
 </form>
+<?php
+$language_tabs_query = $query;
+include __DIR__ . '/_language-tabs.php';
+?>
 
 <section class="wiki-search-results">
     <?php if ( $search_error ) : ?>
@@ -154,7 +149,7 @@ include __DIR__ . '/_header.php';
 <section class="wiki-home-saved">
     <div class="wiki-section-head">
         <div>
-            <h2><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></h2>
+            <h2><a href="<?php echo esc_url( App::get_saved_articles_url() ); ?>"><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></a></h2>
             <p class="wiki-subtitle">
                 <?php
                 echo esc_html(
@@ -167,7 +162,6 @@ include __DIR__ . '/_header.php';
                 ?>
             </p>
         </div>
-        <a class="wiki-btn secondary" href="<?php echo esc_url( App::get_saved_articles_url() ); ?>"><?php esc_html_e( 'View all', 'wikipedia' ); ?></a>
     </div>
 
     <?php if ( $saved_articles_by_letter ) : ?>
@@ -189,6 +183,9 @@ include __DIR__ . '/_header.php';
                                 <span class="wiki-alpha-title"><?php echo esc_html( $saved['title'] ); ?></span>
                                 <span class="wiki-meta">
                                     <span><?php echo esc_html( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?></span>
+                                    <?php foreach ( $saved['lists'] as $list ) : ?>
+                                        <span><?php echo esc_html( $list['name'] ); ?></span>
+                                    <?php endforeach; ?>
                                     <?php if ( $saved['saved_at'] ) : ?>
                                         <span><?php echo esc_html( __( 'Saved', 'wikipedia' ) . ': ' . $saved['saved_at'] ); ?></span>
                                     <?php endif; ?>

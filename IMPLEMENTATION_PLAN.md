@@ -19,7 +19,7 @@ Build on the existing WpApp scaffold to create a Wikipedia browser app. The prim
 - Browser app implementation committed as `aa02124 Build Wikipedia browser app`.
 - UI revamp committed as `dfd3238 Revamp Wikipedia app UI`.
 - GitHub remote was intentionally skipped; user will handle it later.
-- Current UI pass in progress after `dfd3238`: live and saved article pages share one article view, saved articles show saved status/date, page IDs are treated as internal origin metadata, the shared header includes app navigation back to search and saved articles, and the frontpage includes an alphabetical saved-article index.
+- Current UI pass in progress after `67120aa`: the app is being restyled toward a Wikipedia-like reading surface with serif article headings, thin separators, unboxed article content, tab-like actions, consistent controls, compact mobile search controls, Wikipedia search autocomplete, user-selectable search languages, saved-article lists, and an alphabetical saved-article index on the frontpage.
 
 ## Checklist
 
@@ -47,8 +47,10 @@ Build on the existing WpApp scaffold to create a Wikipedia browser app. The prim
 - Added `templates/article.php` for live in-app Wikipedia reading, top-right language switching, internal link browsing, and save action.
 - Added `templates/saved-list.php` for the dedicated saved articles page at `/wikipedia/saved/`.
 - Added `templates/saved.php` for saved article reading and refetching.
+- Added `templates/settings.php` for user-level preferred search languages.
+- Added saved article lists through the `wikipedia_list` taxonomy.
 - Added `templates/_article-view.php` so live and saved articles render through the same article layout.
-- Added `templates/_header.php` and `templates/_footer.php` shared app chrome and styles.
+- Added `templates/_header.php` and `templates/_footer.php` shared app chrome and Wikipedia-inspired styles.
 - Changed `composer.json` and `composer.lock` to add `phpunit/phpunit` as a dev dependency and `composer test`.
 - Added `phpunit.xml.dist`, `tests/bootstrap.php`, and `tests/AppHelpersTest.php` for database-free unit tests.
 - Added `blueprint.json` to set permalinks, activate the mounted plugin, log in, and land on `/wikipedia/` in WordPress Playground.
@@ -56,7 +58,7 @@ Build on the existing WpApp scaffold to create a Wikipedia browser app. The prim
 ## Decisions And Assumptions
 
 - Use WordPress-native storage: one private CPT plus post meta for origin/refetch data.
-- Do not add a taxonomy for now. Saved articles should be searchable in the CPT admin UI and carry language/origin metadata in post meta.
+- Saved articles use the `wikipedia_list` taxonomy for user organization in wp-admin and app list filtering.
 - Default Wikipedia search language comes from the current user's WordPress locale (`get_user_locale()`), falling back to site locale and then `en`.
 - Treat multilingual browsing as first-class: UI, abilities, saved metadata, saved slugs, and saved-article filtering carry a language code.
 - Saved article slugs include language and title, e.g. `de-albert-einstein`; the Wikipedia page ID stays in post meta for exact origin/refetch behavior.

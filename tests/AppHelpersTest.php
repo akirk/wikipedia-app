@@ -43,6 +43,13 @@ class AppHelpersTest extends TestCase {
         $this->assertSame( 'SCO', App::get_language_label( 'sco' ) );
     }
 
+    public function test_normalize_language_list_dedupes_and_rejects_invalid_codes(): void {
+        $this->assertSame(
+            [ 'de', 'en', 'simple' ],
+            App::normalize_language_list( [ 'DE', '../bad', 'en', 'de', 'simple' ] )
+        );
+    }
+
     public function test_saved_article_slug_includes_language_and_title(): void {
         $this->assertSame(
             'de-albert-einstein',
@@ -73,6 +80,11 @@ class AppHelpersTest extends TestCase {
 
     public function test_saved_articles_url(): void {
         $this->assertSame( 'https://example.test/wikipedia/saved', App::get_saved_articles_url() );
+    }
+
+    public function test_settings_and_list_urls(): void {
+        $this->assertSame( 'https://example.test/wikipedia/settings', App::get_settings_url() );
+        $this->assertSame( 'https://example.test/wikipedia/list/science', App::get_list_url( 'Science' ) );
     }
 
     public function test_article_allowed_html_contains_expected_article_tags(): void {
