@@ -875,7 +875,9 @@ class App extends BaseApp {
             update_post_meta( $post_id, self::META_SAVED_AT, current_time( 'mysql' ) );
         }
 
-        update_post_meta( $post_id, self::META_REFETCHED_AT, current_time( 'mysql' ) );
+        if ( ! $created ) {
+            update_post_meta( $post_id, self::META_REFETCHED_AT, current_time( 'mysql' ) );
+        }
     }
 
     public static function list_saved_articles( string $search = '', int $limit = 20, string $language = '', string $list = '' ): array {
@@ -921,7 +923,12 @@ class App extends BaseApp {
         $articles = [];
 
         foreach ( $posts as $post ) {
-            $articles[] = self::format_saved_article( $post );
+            $extra = [];
+            if ( '' !== $search ) {
+                $extra['search_snippet'] = self::build_saved_article_search_snippet( $post, $search );
+            }
+
+            $articles[] = self::format_saved_article( $post, false, $extra );
         }
 
         return $articles;
@@ -936,6 +943,10 @@ class App extends BaseApp {
         $language = (string) get_post_meta( $post_id, self::META_LANGUAGE, true );
         $page_id  = absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) );
 
+        $saved_at = (string) get_post_meta( $post_id, self::META_SAVED_AT, true );
+        $refetched_at = (string) get_post_meta( $post_id, self::META_REFETCHED_AT, true );
+        $last_saved_at = self::latest_datetime( [ $saved_at, $refetched_at ] );
+
         $article = [
             'post_id'             => $post_id,
             'id'                  => $post_id,
@@ -949,8 +960,12 @@ class App extends BaseApp {
             'thumbnail_url'       => (string) get_post_meta( $post_id, self::META_THUMBNAIL_URL, true ),
             'last_revision_id'    => (string) get_post_meta( $post_id, self::META_LAST_REVISION, true ),
             'remote_touched'      => (string) get_post_meta( $post_id, self::META_REMOTE_TOUCHED, true ),
-            'saved_at'            => (string) get_post_meta( $post_id, self::META_SAVED_AT, true ),
-            'refetched_at'        => (string) get_post_meta( $post_id, self::META_REFETCHED_AT, true ),
+            'saved_at'            => $saved_at,
+            'saved_at_display'    => self::format_datetime( $saved_at ),
+            'refetched_at'        => $refetched_at,
+            'refetched_at_display' => self::format_datetime( $refetched_at ),
+            'last_saved_at'       => $last_saved_at,
+            'last_saved_at_display' => self::format_datetime( $last_saved_at ),
             'view_url'            => self::get_app_url( 'saved/' . ( $post->post_name ?: $post_id ) ),
             'live_app_url'        => self::get_article_url( $language, get_the_title( $post ), $page_id ),
             'app_url'             => self::get_article_url( $language, get_the_title( $post ), $page_id ),
@@ -965,6 +980,120 @@ class App extends BaseApp {
         }
 
         return array_merge( $article, $extra );
+    }
+
+    public static function format_datetime( string $value ): string {
+        $value = trim( $value );
+        if ( '' === $value ) {
+            return '';
+        }
+
+        $format = 'M j, Y';
+        if ( function_exists( 'get_option' ) ) {
+            $date_format = (string) get_option( 'date_format' );
+            $format = trim( $date_format ) ?: $format;
+        }
+
+        if ( function_exists( 'mysql2date' ) ) {
+            return mysql2date( $format, $value );
+        }
+
+        $timestamp = strtotime( $value );
+        return $timestamp ? date( $format, $timestamp ) : $value;
+    }
+
+    private static function latest_datetime( array $values ): string {
+        $latest = '';
+        $latest_timestamp = 0;
+
+        foreach ( $values as $value ) {
+            if ( ! is_scalar( $value ) ) {
+                continue;
+            }
+
+            $value = trim( (string) $value );
+            if ( '' === $value ) {
+                continue;
+            }
+
+            $timestamp = strtotime( $value );
+            if ( ! $timestamp ) {
+                if ( '' === $latest ) {
+                    $latest = $value;
+                }
+                continue;
+            }
+
+            if ( $timestamp >= $latest_timestamp ) {
+                $latest = $value;
+                $latest_timestamp = $timestamp;
+            }
+        }
+
+        return $latest;
+    }
+
+    private static function build_saved_article_search_snippet( $post, string $search ): string {
+        if ( ! $post instanceof \WP_Post ) {
+            return '';
+        }
+
+        $search = trim( wp_strip_all_tags( $search ) );
+        if ( '' === $search ) {
+            return '';
+        }
+
+        $content = wp_strip_all_tags( $post->post_content );
+        $content = preg_replace( '/\s+/', ' ', $content );
+        $content = is_string( $content ) ? trim( $content ) : '';
+        if ( '' === $content ) {
+            return '';
+        }
+
+        $terms = preg_split( '/\s+/', $search );
+        $terms = array_values( array_filter( array_map( 'trim', is_array( $terms ) ? $terms : [] ) ) );
+        if ( ! $terms ) {
+            return '';
+        }
+
+        $position = false;
+        foreach ( $terms as $term ) {
+            if ( function_exists( 'mb_stripos' ) ) {
+                $position = mb_stripos( $content, $term );
+            } else {
+                $position = stripos( $content, $term );
+            }
+
+            if ( false !== $position ) {
+                break;
+            }
+        }
+
+        if ( false === $position ) {
+            return wp_trim_words( $content, 34, '...' );
+        }
+
+        $length = function_exists( 'mb_strlen' ) ? mb_strlen( $content ) : strlen( $content );
+        $start = max( 0, (int) $position - 120 );
+        $snippet_length = 260;
+        $snippet = function_exists( 'mb_substr' )
+            ? mb_substr( $content, $start, $snippet_length )
+            : substr( $content, $start, $snippet_length );
+
+        $prefix = $start > 0 ? '...' : '';
+        $suffix = ( $start + $snippet_length ) < $length ? '...' : '';
+        $snippet = esc_html( $prefix . trim( $snippet ) . $suffix );
+
+        foreach ( $terms as $term ) {
+            $term = preg_quote( esc_html( $term ), '/' );
+            if ( '' === $term ) {
+                continue;
+            }
+
+            $snippet = preg_replace( '/(' . $term . ')/iu', '<mark>$1</mark>', $snippet );
+        }
+
+        return is_string( $snippet ) ? $snippet : '';
     }
 
     private static function format_article_lists( int $post_id ): array {
@@ -1116,6 +1245,18 @@ class App extends BaseApp {
     }
 
     public static function get_default_language(): string {
+        if ( function_exists( 'get_current_user_id' ) && function_exists( 'get_user_meta' ) ) {
+            $stored = get_user_meta( get_current_user_id(), self::USER_META_LANGUAGES, true );
+            $languages = is_array( $stored ) ? self::normalize_language_list( $stored ) : [];
+            if ( $languages ) {
+                return $languages[0];
+            }
+        }
+
+        return 'en';
+    }
+
+    public static function get_locale_default_language(): string {
         $locale = function_exists( 'get_user_locale' ) ? get_user_locale() : get_locale();
         return self::language_from_locale( $locale ) ?: 'en';
     }
@@ -1143,22 +1284,75 @@ class App extends BaseApp {
     }
 
     public static function get_supported_languages(): array {
-        return apply_filters( 'wikipedia_app_languages', [
-            'en'     => __( 'English', 'wikipedia' ),
-            'de'     => __( 'German', 'wikipedia' ),
-            'fr'     => __( 'French', 'wikipedia' ),
-            'es'     => __( 'Spanish', 'wikipedia' ),
-            'it'     => __( 'Italian', 'wikipedia' ),
-            'pt'     => __( 'Portuguese', 'wikipedia' ),
-            'nl'     => __( 'Dutch', 'wikipedia' ),
-            'pl'     => __( 'Polish', 'wikipedia' ),
-            'ru'     => __( 'Russian', 'wikipedia' ),
-            'ja'     => __( 'Japanese', 'wikipedia' ),
-            'zh'     => __( 'Chinese', 'wikipedia' ),
-            'ar'     => __( 'Arabic', 'wikipedia' ),
-            'uk'     => __( 'Ukrainian', 'wikipedia' ),
-            'simple' => __( 'Simple English', 'wikipedia' ),
+        $fallback = [ 'en' => __( 'English', 'wikipedia' ) ];
+        if ( ! function_exists( 'wp_remote_get' ) ) {
+            return apply_filters( 'wikipedia_app_languages', $fallback );
+        }
+
+        $cache_key = 'wikipedia_app_language_versions';
+        $languages = function_exists( 'get_transient' ) ? get_transient( $cache_key ) : false;
+        if ( is_array( $languages ) && $languages ) {
+            return apply_filters( 'wikipedia_app_languages', $languages );
+        }
+
+        $data = self::request_wikipedia( 'en', [
+            'action'        => 'sitematrix',
+            'smtype'        => 'language|special',
+            'smlangprop'    => 'code|name|localname|site',
+            'smsiteprop'    => 'url|dbname|code|sitename',
+            'formatversion' => 2,
+            'utf8'          => 1,
         ] );
+
+        if ( is_wp_error( $data ) ) {
+            return apply_filters( 'wikipedia_app_languages', $fallback );
+        }
+
+        $languages = [];
+        foreach ( $data['sitematrix'] ?? [] as $key => $language ) {
+            if ( ! is_array( $language ) ) {
+                continue;
+            }
+
+            if ( 'specials' === $key ) {
+                foreach ( $language as $special_site ) {
+                    if ( ! is_array( $special_site ) || 'simple' !== ( $special_site['code'] ?? '' ) || ! self::is_open_wikipedia_site( [ $special_site ], 'simple' ) ) {
+                        continue;
+                    }
+
+                    $languages['simple'] = __( 'Simple English', 'wikipedia' );
+                }
+                continue;
+            }
+
+            if ( isset( $language['site'] ) && is_array( $language['site'] ) ) {
+                $code = sanitize_text_field( $language['code'] ?? '' );
+                if ( ! self::is_open_wikipedia_site( $language['site'], $code ) ) {
+                    continue;
+                }
+
+                $local_name = isset( $language['localname'] ) ? sanitize_text_field( $language['localname'] ) : '';
+                $name = isset( $language['name'] ) ? sanitize_text_field( $language['name'] ) : '';
+                $label = $local_name ?: ( $name ?: strtoupper( $code ) );
+                if ( $name && $local_name && $name !== $local_name ) {
+                    $label .= ' - ' . $name;
+                }
+
+                if ( preg_match( '/^[a-z][a-z0-9-]{1,15}$/', $code ) ) {
+                    $languages[ $code ] = $label;
+                }
+                continue;
+            }
+
+        }
+
+        ksort( $languages, SORT_NATURAL | SORT_FLAG_CASE );
+        $languages = $languages ?: $fallback;
+        if ( function_exists( 'set_transient' ) ) {
+            set_transient( $cache_key, $languages, defined( 'DAY_IN_SECONDS' ) ? DAY_IN_SECONDS : 86400 );
+        }
+
+        return apply_filters( 'wikipedia_app_languages', $languages );
     }
 
     public static function normalize_language_list( array $languages ): array {
@@ -1169,7 +1363,12 @@ class App extends BaseApp {
                 continue;
             }
 
-            $language = self::normalize_language( (string) $language );
+            $language = strtolower( trim( (string) $language ) );
+            if ( '' === $language ) {
+                continue;
+            }
+
+            $language = self::normalize_language( $language );
             if ( is_wp_error( $language ) || in_array( $language, $normalized, true ) ) {
                 continue;
             }
@@ -1189,13 +1388,7 @@ class App extends BaseApp {
         $languages = is_array( $stored ) ? self::normalize_language_list( $stored ) : [];
 
         if ( ! $languages ) {
-            $languages = self::normalize_language_list( [ self::get_default_language(), 'en' ] );
-        }
-
-        $default_language = self::get_default_language();
-        if ( ! in_array( $default_language, $languages, true ) ) {
-            array_unshift( $languages, $default_language );
-            $languages = self::normalize_language_list( $languages );
+            $languages = [ 'en' ];
         }
 
         return $languages;
@@ -1204,6 +1397,32 @@ class App extends BaseApp {
     public static function get_language_label( string $language ): string {
         $languages = self::get_supported_languages();
         return $languages[ $language ] ?? strtoupper( $language );
+    }
+
+    private static function is_open_wikipedia_site( array $sites, string $language ): bool {
+        $language = strtolower( trim( $language ) );
+        if ( ! preg_match( '/^[a-z][a-z0-9-]{1,15}$/', $language ) ) {
+            return false;
+        }
+
+        foreach ( $sites as $site ) {
+            if ( ! is_array( $site ) ) {
+                continue;
+            }
+
+            if ( isset( $site['closed'] ) || isset( $site['private'] ) || isset( $site['fishbowl'] ) ) {
+                continue;
+            }
+
+            $url = isset( $site['url'] ) ? (string) $site['url'] : '';
+            $dbname = isset( $site['dbname'] ) ? (string) $site['dbname'] : '';
+            $is_wikipedia_project = 'wiki' === ( $site['code'] ?? '' ) || $dbname === $language . 'wiki';
+            if ( $is_wikipedia_project && preg_match( '#^https://' . preg_quote( $language, '#' ) . '\.wikipedia\.org/?$#', $url ) ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function build_article_slug( string $language, string $title, int $page_id ): string {

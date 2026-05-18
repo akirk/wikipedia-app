@@ -24,11 +24,17 @@ class AppHelpersTest extends TestCase {
         ];
     }
 
-    public function test_default_language_uses_user_locale(): void {
+    public function test_locale_default_language_uses_user_locale(): void {
         $GLOBALS['wikipedia_app_test_user_locale'] = 'de_DE';
 
-        $this->assertSame( 'de', App::get_default_language() );
-        $this->assertSame( 'de', App::normalize_language() );
+        $this->assertSame( 'de', App::get_locale_default_language() );
+    }
+
+    public function test_default_language_uses_english_without_preferences(): void {
+        $GLOBALS['wikipedia_app_test_user_locale'] = 'de_DE';
+
+        $this->assertSame( 'en', App::get_default_language() );
+        $this->assertSame( 'en', App::normalize_language() );
     }
 
     public function test_normalize_language_rejects_invalid_subdomain(): void {

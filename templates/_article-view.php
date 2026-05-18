@@ -10,7 +10,7 @@ $article_html = isset( $article['html'] ) ? $article['html'] : ( $article['conte
 $is_saved_view = ! empty( $is_saved_view );
 $saved_label = '';
 if ( $is_saved_view ) {
-    $saved_date = ! empty( $article['saved_at'] ) ? $article['saved_at'] : ( $article['refetched_at'] ?? '' );
+    $saved_date = ! empty( $article['last_saved_at_display'] ) ? $article['last_saved_at_display'] : App::format_datetime( $article['last_saved_at'] ?? '' );
     $saved_label = $saved_date
         ? sprintf(
             /* translators: %s: saved date */
@@ -29,6 +29,14 @@ if ( $is_saved_view ) {
                 <span class="wiki-saved-status">
                     <span aria-hidden="true">✓</span>
                     <?php echo esc_html( $saved_label ); ?>
+                    <?php if ( current_user_can( 'edit_posts' ) && ! empty( $article['post_id'] ) ) : ?>
+                        <form class="wiki-inline-form wiki-saved-refresh" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                            <?php wp_nonce_field( App::NONCE_REFETCH_ARTICLE . '_' . $article['post_id'] ); ?>
+                            <input type="hidden" name="action" value="wikipedia_refetch_article">
+                            <input type="hidden" name="post_id" value="<?php echo esc_attr( $article['post_id'] ); ?>">
+                            <button class="wiki-btn secondary wiki-mini-btn" type="submit"><?php esc_html_e( 'Refresh', 'wikipedia' ); ?></button>
+                        </form>
+                    <?php endif; ?>
                 </span>
             <?php endif; ?>
         </p>

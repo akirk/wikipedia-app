@@ -43,32 +43,30 @@ include __DIR__ . '/_header.php';
     </nav>
 <?php endif; ?>
 
-<form class="wiki-search wiki-compact-search" method="get" action="<?php echo esc_url( $current_list ? App::get_list_url( $current_list ) : App::get_saved_articles_url() ); ?>">
-    <label class="wiki-search-field">
-        <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search saved articles', 'wikipedia' ); ?>" aria-label="<?php esc_attr_e( 'Search saved articles', 'wikipedia' ); ?>">
-    </label>
-    <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Filter', 'wikipedia' ); ?></button>
-</form>
+<?php
+$wiki_saved_search = $search;
+$wiki_saved_search_action = $current_list ? App::get_list_url( $current_list ) : App::get_saved_articles_url();
+include __DIR__ . '/_saved-search-form.php';
+?>
 
 <?php if ( $saved_articles ) : ?>
-    <ul class="wiki-saved-list wiki-saved-list-full">
+    <ul class="wiki-saved-list wiki-saved-list-full" id="wiki-saved-list">
         <?php foreach ( $saved_articles as $saved ) : ?>
             <li class="wiki-saved-item">
                 <h2><a href="<?php echo esc_url( $saved['view_url'] ); ?>"><?php echo esc_html( $saved['title'] ); ?></a></h2>
                 <div class="wiki-meta">
-                    <span><?php echo esc_html( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?></span>
+                    <span title="<?php echo esc_attr( $saved['language_label'] ); ?>" aria-label="<?php echo esc_attr( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?>"><?php echo esc_html( $saved['language'] ); ?></span>
                     <?php foreach ( $saved['lists'] as $list ) : ?>
                         <span><a href="<?php echo esc_url( $list['view_url'] ); ?>"><?php echo esc_html( $list['name'] ); ?></a></span>
                     <?php endforeach; ?>
-                    <?php if ( $saved['saved_at'] ) : ?>
-                        <span><?php echo esc_html( __( 'Saved', 'wikipedia' ) . ': ' . $saved['saved_at'] ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( $saved['refetched_at'] ) : ?>
-                        <span><?php echo esc_html( __( 'Refetched', 'wikipedia' ) . ': ' . $saved['refetched_at'] ); ?></span>
+                    <?php if ( ! empty( $saved['last_saved_at_display'] ) ) : ?>
+                        <span><?php echo esc_html( __( 'Last saved', 'wikipedia' ) . ' ' . $saved['last_saved_at_display'] ); ?></span>
                     <?php endif; ?>
                 </div>
-                <?php if ( $saved['summary'] ) : ?>
-                    <p><?php echo esc_html( $saved['summary'] ); ?></p>
+                <?php if ( ! empty( $saved['search_snippet'] ) ) : ?>
+                    <p class="wiki-saved-snippet"><?php echo wp_kses( $saved['search_snippet'], [ 'mark' => [] ] ); ?></p>
+                <?php elseif ( $saved['summary'] ) : ?>
+                    <p class="wiki-saved-snippet"><?php echo esc_html( $saved['summary'] ); ?></p>
                 <?php endif; ?>
                 <div class="wiki-article-tools">
                     <a class="wiki-btn secondary" href="<?php echo esc_url( $saved['view_url'] ); ?>"><?php esc_html_e( 'Read saved', 'wikipedia' ); ?></a>

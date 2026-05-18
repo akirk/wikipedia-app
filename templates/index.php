@@ -23,11 +23,6 @@ if ( '' !== $query ) {
     }
 }
 
-$languages = App::get_supported_languages();
-if ( ! isset( $languages[ $language ] ) ) {
-    $languages[ $language ] = App::get_language_label( $language );
-}
-
 $saved_posts = get_posts( [
     'post_type'      => App::POST_TYPE,
     'post_status'    => [ 'publish', 'draft', 'private' ],
@@ -72,50 +67,28 @@ include __DIR__ . '/_header.php';
     <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
 <?php endif; ?>
 
-<form class="wiki-search wiki-wikipedia-search" method="get" action="<?php echo esc_url( App::get_app_url() ); ?>" data-wiki-autocomplete data-article-base="<?php echo esc_url( App::get_app_url( 'article/' ) ); ?>">
-    <label class="wiki-search-field">
-        <span><?php esc_html_e( 'Search', 'wikipedia' ); ?></span>
-        <input type="search" name="q" value="<?php echo esc_attr( $query ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search Wikipedia', 'wikipedia' ); ?>" data-wiki-autocomplete-input aria-autocomplete="list" aria-expanded="false" aria-controls="wiki-search-suggestions-home">
-        <div class="wiki-autocomplete" id="wiki-search-suggestions-home" role="listbox" hidden></div>
-    </label>
-    <label class="wiki-search-language">
-        <span><?php esc_html_e( 'Language', 'wikipedia' ); ?></span>
-        <select name="language">
-            <?php foreach ( $languages as $code => $label ) : ?>
-                <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $language, $code ); ?>><?php echo esc_html( $label . ' (' . $code . ')' ); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
-</form>
+<?php
+$wiki_search_query = $query;
+$wiki_search_language = $language;
+include __DIR__ . '/_search-form.php';
+?>
 <?php
 $language_tabs_query = $query;
+$language_tabs_hidden = '' === trim( $query );
 include __DIR__ . '/_language-tabs.php';
 ?>
 
-<section class="wiki-search-results">
+<section class="wiki-search-results" id="wiki-search-results" data-wiki-quicksearch-results aria-live="polite">
     <?php if ( $search_error ) : ?>
         <div class="wiki-notice error"><?php echo esc_html( $search_error->get_error_message() ); ?></div>
     <?php elseif ( is_array( $results ) ) : ?>
-        <h2>
-            <?php
-            echo esc_html(
-                sprintf(
-                    /* translators: 1: search query, 2: language label */
-                    __( 'Results for "%1$s" in %2$s', 'wikipedia' ),
-                    $query,
-                    App::get_language_label( $language )
-                )
-            );
-            ?>
-        </h2>
         <?php if ( $results ) : ?>
             <ul class="wiki-results">
                 <?php foreach ( $results as $result ) : ?>
                     <li class="wiki-result">
                         <h2><a href="<?php echo esc_url( $result['app_url'] ); ?>"><?php echo esc_html( $result['title'] ); ?></a></h2>
                         <div class="wiki-meta">
-                            <span><?php echo esc_html( $result['language_label'] . ' (' . $result['language'] . ')' ); ?></span>
+                            <span title="<?php echo esc_attr( $result['language_label'] ); ?>" aria-label="<?php echo esc_attr( $result['language_label'] . ' (' . $result['language'] . ')' ); ?>"><?php echo esc_html( $result['language'] ); ?></span>
                             <?php if ( ! empty( $result['word_count'] ) ) : ?>
                                 <span><?php echo esc_html( number_format_i18n( $result['word_count'] ) . ' ' . __( 'words', 'wikipedia' ) ); ?></span>
                             <?php endif; ?>
@@ -142,8 +115,6 @@ include __DIR__ . '/_language-tabs.php';
         <?php else : ?>
             <div class="wiki-notice"><?php esc_html_e( 'No Wikipedia results found.', 'wikipedia' ); ?></div>
         <?php endif; ?>
-    <?php else : ?>
-        <div class="wiki-notice"><?php esc_html_e( 'Search Wikipedia above, or open one of your saved articles below.', 'wikipedia' ); ?></div>
     <?php endif; ?>
 </section>
 
@@ -183,12 +154,12 @@ include __DIR__ . '/_language-tabs.php';
                             <a href="<?php echo esc_url( $saved['view_url'] ); ?>">
                                 <span class="wiki-alpha-title"><?php echo esc_html( $saved['title'] ); ?></span>
                                 <span class="wiki-meta">
-                                    <span><?php echo esc_html( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?></span>
+                                    <span title="<?php echo esc_attr( $saved['language_label'] ); ?>" aria-label="<?php echo esc_attr( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?>"><?php echo esc_html( $saved['language'] ); ?></span>
                                     <?php foreach ( $saved['lists'] as $list ) : ?>
                                         <span><?php echo esc_html( $list['name'] ); ?></span>
                                     <?php endforeach; ?>
-                                    <?php if ( $saved['saved_at'] ) : ?>
-                                        <span><?php echo esc_html( __( 'Saved', 'wikipedia' ) . ': ' . $saved['saved_at'] ); ?></span>
+                                    <?php if ( ! empty( $saved['last_saved_at_display'] ) ) : ?>
+                                        <span title="<?php echo esc_attr( __( 'Last saved', 'wikipedia' ) . ' ' . $saved['last_saved_at_display'] ); ?>" aria-label="<?php echo esc_attr( __( 'Last saved', 'wikipedia' ) . ' ' . $saved['last_saved_at_display'] ); ?>"><?php echo esc_html( $saved['last_saved_at_display'] ); ?></span>
                                     <?php endif; ?>
                                 </span>
                             </a>

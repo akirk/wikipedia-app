@@ -35,6 +35,12 @@ include __DIR__ . '/_header.php';
     <div class="wiki-notice success"><?php esc_html_e( 'Refetched from Wikipedia.', 'wikipedia' ); ?></div>
 <?php endif; ?>
 
+<?php
+$wiki_saved_search = '';
+$wiki_saved_search_action = App::get_saved_articles_url();
+include __DIR__ . '/_saved-search-form.php';
+?>
+
 <?php if ( ! $article ) : ?>
     <div class="wiki-notice error"><?php esc_html_e( 'Saved article not found.', 'wikipedia' ); ?></div>
 <?php else : ?>
