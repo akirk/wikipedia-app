@@ -109,6 +109,7 @@ class App extends BaseApp {
     protected function setup_routes(): void {
         $this->app->route( 'article/{language}', 'article.php' );
         $this->app->route( 'saved', 'saved-list.php' );
+        $this->app->route( 'snippets', 'snippets-list.php' );
         $this->app->route( 'list/{slug}', 'saved-list.php' );
         $this->app->route( 'saved/{id}', 'saved.php' );
         $this->app->route( 'saved/{slug}', 'saved.php' );
@@ -120,6 +121,7 @@ class App extends BaseApp {
 
         $this->app->add_menu_item( 'search', __( 'Search', 'wikipedia' ), $home );
         $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wikipedia' ), self::get_saved_articles_url() );
+        $this->app->add_menu_item( 'snippets', __( 'Saved snippets', 'wikipedia' ), self::get_saved_snippets_url() );
         $this->app->add_menu_item( 'settings', __( 'Settings', 'wikipedia' ), self::get_settings_url() );
     }
 
@@ -788,6 +790,10 @@ class App extends BaseApp {
 
     public static function get_saved_articles_url(): string {
         return self::get_app_url( 'saved' );
+    }
+
+    public static function get_saved_snippets_url(): string {
+        return self::get_app_url( 'snippets' );
     }
 
     public static function get_settings_url(): string {

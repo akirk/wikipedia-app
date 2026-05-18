@@ -73,6 +73,7 @@ a:hover, a:focus { color: var(--wiki-primary-hover); text-decoration: underline;
 .wiki-search { display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto; gap: 0.5rem; align-items: end; margin: 0 0 1.35rem; padding: 0.65rem; border: 1px solid var(--wiki-line); background: var(--wiki-card-alt); }
 .wiki-compact-search { grid-template-columns: minmax(0, 1fr) auto; }
 .wiki-quicksearch { grid-template-columns: minmax(0, 1fr) auto; }
+.wiki-snippet-search { grid-template-columns: minmax(0, 1fr) minmax(9rem, 15rem) auto auto; }
 .wiki-search label { display: grid; gap: 0.25rem; margin: 0; font-weight: 600; }
 .wiki-search span { color: var(--wiki-muted); font-size: 0.82rem; font-weight: 500; }
 .wiki-search-field { position: relative; }
@@ -156,6 +157,13 @@ input:focus, select:focus, textarea:focus, button:focus, a:focus { outline: 2px 
 .wiki-snippet-content { margin: 0 0 0.45rem; padding: 0 0 0 0.75rem; border-left: 3px solid var(--wiki-line); color: var(--wiki-fg); }
 .wiki-snippet-content > :first-child { margin-top: 0; }
 .wiki-snippet-content > :last-child { margin-bottom: 0; }
+.wiki-snippet-browser-summary { margin: -0.35rem 0 0.55rem; }
+.wiki-snippet-browser-list { gap: 0; }
+.wiki-snippet-browser-item { padding: 0.85rem 0; }
+.wiki-snippet-browser-title { margin: 0 0 0.2rem; font-family: var(--wiki-sans); font-size: 1.05rem; font-weight: 500; line-height: 1.35; }
+.wiki-snippet-browser-title a { color: var(--wiki-fg); text-decoration: none; }
+.wiki-snippet-browser-title a:hover, .wiki-snippet-browser-title a:focus { color: var(--wiki-primary); text-decoration: underline; }
+.wiki-snippet-browser-item .wiki-snippet-content { margin-top: 0.55rem; }
 .wiki-snippet-edit { display: grid; gap: 0.45rem; margin: 0.5rem 0 0; }
 .wiki-snippet-edit[hidden] { display: none; }
 .wiki-snippet-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; justify-content: space-between; }

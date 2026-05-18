@@ -27,6 +27,7 @@ $wiki_current_nav = isset( $wiki_current_nav ) ? sanitize_key( $wiki_current_nav
         <div class="wiki-nav">
             <a class="<?php echo esc_attr( 'search' === $wiki_current_nav ? 'is-active' : '' ); ?>" <?php echo 'search' === $wiki_current_nav ? 'aria-current="page"' : ''; ?> href="<?php echo esc_url( \Akirk\Wikipedia\App::get_app_url() ); ?>"><?php esc_html_e( 'Search', 'wikipedia' ); ?></a>
             <a class="<?php echo esc_attr( 'saved' === $wiki_current_nav ? 'is-active' : '' ); ?>" <?php echo 'saved' === $wiki_current_nav ? 'aria-current="page"' : ''; ?> href="<?php echo esc_url( \Akirk\Wikipedia\App::get_saved_articles_url() ); ?>"><?php esc_html_e( 'Saved articles', 'wikipedia' ); ?></a>
+            <a class="<?php echo esc_attr( 'snippets' === $wiki_current_nav ? 'is-active' : '' ); ?>" <?php echo 'snippets' === $wiki_current_nav ? 'aria-current="page"' : ''; ?> href="<?php echo esc_url( \Akirk\Wikipedia\App::get_saved_snippets_url() ); ?>"><?php esc_html_e( 'Saved snippets', 'wikipedia' ); ?></a>
             <a class="<?php echo esc_attr( 'settings' === $wiki_current_nav ? 'is-active' : '' ); ?>" <?php echo 'settings' === $wiki_current_nav ? 'aria-current="page"' : ''; ?> href="<?php echo esc_url( \Akirk\Wikipedia\App::get_settings_url() ); ?>"><?php esc_html_e( 'Settings', 'wikipedia' ); ?></a>
             <?php if ( ! empty( $wiki_article_actions ) && is_array( $wiki_article_actions ) ) : ?>
                 <details class="wiki-nav-menu">
