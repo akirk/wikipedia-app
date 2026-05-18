@@ -65,6 +65,7 @@ uksort( $saved_articles_by_letter, function( $a, $b ) {
 } );
 
 $page_title = __( 'Wikipedia', 'wikipedia' );
+$wiki_current_nav = 'search';
 include __DIR__ . '/_header.php';
 ?>
 <?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>

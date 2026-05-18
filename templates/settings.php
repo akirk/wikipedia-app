@@ -14,6 +14,7 @@ foreach ( $selected_languages as $code ) {
 }
 
 $page_title = __( 'Wikipedia settings', 'wikipedia' );
+$wiki_current_nav = 'settings';
 include __DIR__ . '/_header.php';
 ?>
 <div class="wiki-page-head">

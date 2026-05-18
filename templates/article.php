@@ -33,6 +33,7 @@ if ( $page_id || '' !== $title ) {
 }
 
 $page_title = $article ? $article['title'] : __( 'Wikipedia article', 'wikipedia' );
+$wiki_current_nav = 'search';
 if ( $article ) {
     $wiki_article_actions = [
         'article'       => $article,

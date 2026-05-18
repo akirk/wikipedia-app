@@ -16,17 +16,8 @@ if ( $current_list && is_wp_error( $current_list ) ) {
 
 // phpcs:disable WordPress.Security.NonceVerification.Recommended -- saved article filtering is read-only.
 $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-$language_input = isset( $_GET['language'] ) ? sanitize_text_field( wp_unslash( $_GET['language'] ) ) : '';
-$language = '' !== $language_input ? App::normalize_language( $language_input ) : '';
-if ( is_wp_error( $language ) ) {
-    $language = '';
-}
 
-$saved_articles = App::list_saved_articles( $search, 50, $language, $list_slug );
-$languages = App::get_supported_languages();
-if ( '' !== $language && ! isset( $languages[ $language ] ) ) {
-    $languages[ $language ] = App::get_language_label( $language );
-}
+$saved_articles = App::list_saved_articles( $search, 50, '', $list_slug );
 $lists = get_terms( [
     'taxonomy'   => App::TAX_LIST,
     'hide_empty' => true,
@@ -36,15 +27,9 @@ if ( is_wp_error( $lists ) ) {
 }
 
 $page_title = $current_list ? $current_list->name : __( 'Saved articles', 'wikipedia' );
+$wiki_current_nav = 'saved';
 include __DIR__ . '/_header.php';
 ?>
-<div class="wiki-page-head">
-    <div>
-        <h1><?php echo esc_html( $current_list ? $current_list->name : __( 'Saved articles', 'wikipedia' ) ); ?></h1>
-        <p class="wiki-subtitle"><?php esc_html_e( 'Articles saved in WordPress.', 'wikipedia' ); ?></p>
-    </div>
-</div>
-
 <?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>
     <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
 <?php endif; ?>
@@ -60,17 +45,7 @@ include __DIR__ . '/_header.php';
 
 <form class="wiki-search wiki-compact-search" method="get" action="<?php echo esc_url( $current_list ? App::get_list_url( $current_list ) : App::get_saved_articles_url() ); ?>">
     <label class="wiki-search-field">
-        <span><?php esc_html_e( 'Search saved articles', 'wikipedia' ); ?></span>
-        <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search saved articles', 'wikipedia' ); ?>">
-    </label>
-    <label class="wiki-search-language">
-        <span><?php esc_html_e( 'Language', 'wikipedia' ); ?></span>
-        <select name="language">
-            <option value=""><?php esc_html_e( 'All languages', 'wikipedia' ); ?></option>
-            <?php foreach ( $languages as $code => $label ) : ?>
-                <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $language, $code ); ?>><?php echo esc_html( $label . ' (' . $code . ')' ); ?></option>
-            <?php endforeach; ?>
-        </select>
+        <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search saved articles', 'wikipedia' ); ?>" aria-label="<?php esc_attr_e( 'Search saved articles', 'wikipedia' ); ?>">
     </label>
     <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Filter', 'wikipedia' ); ?></button>
 </form>
