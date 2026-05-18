@@ -648,7 +648,10 @@
         var targetId = form.getAttribute('data-results-target') || '';
         var tabsId = form.getAttribute('data-language-tabs') || '';
         var target = targetId ? document.getElementById(targetId) : document.querySelector('[data-wiki-quicksearch-results]');
-        var tabs = tabsId ? document.getElementById(tabsId) : document.querySelector('[data-wiki-language-tabs]');
+        var tabs = tabsId ? document.getElementById(tabsId) : document.querySelector('[data-wiki-search-language-tabs]');
+        if (tabs && !tabs.hasAttribute('data-wiki-search-language-tabs')) {
+            tabs = null;
+        }
         var articleBase = form.getAttribute('data-article-base') || '';
         var controller = null;
         var timer = null;

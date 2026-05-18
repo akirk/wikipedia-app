@@ -75,7 +75,7 @@ include __DIR__ . '/_search-form.php';
 <?php
 $language_tabs_query = $query;
 $language_tabs_hidden = '' === trim( $query );
-include __DIR__ . '/_language-tabs.php';
+include __DIR__ . '/_search-language-tabs.php';
 ?>
 
 <section class="wiki-search-results" id="wiki-search-results" data-wiki-quicksearch-results aria-live="polite">
