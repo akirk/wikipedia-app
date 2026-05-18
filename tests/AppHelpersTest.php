@@ -103,6 +103,22 @@ class AppHelpersTest extends TestCase {
         $this->assertArrayHasKey( 'src', $allowed['img'] );
     }
 
+    public function test_snippet_text_is_plain_and_normalized(): void {
+        $text = "  Albert&nbsp;<strong>Einstein</strong>\r\n\r\n\r\n developed\t relativity.  ";
+
+        $this->assertSame(
+            "Albert Einstein\n\ndeveloped relativity.",
+            $this->invokePrivateStatic( 'normalize_snippet_text', [ $text ] )
+        );
+    }
+
+    public function test_snippet_excerpt_trims_to_word_limit(): void {
+        $this->assertSame(
+            'one two three...',
+            $this->invokePrivateStatic( 'snippet_excerpt', [ 'one two three four five', 3 ] )
+        );
+    }
+
     public function test_wikipedia_article_href_is_rewritten_to_app_url(): void {
         $this->assertSame(
             'https://example.test/wikipedia/article/en?title=Albert%20Einstein#Life',

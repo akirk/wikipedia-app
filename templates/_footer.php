@@ -249,6 +249,120 @@ if ( ! defined( 'ABSPATH' ) ) {
         });
     });
 
+    document.querySelectorAll('[data-wiki-snippet-form]').forEach(function (form) {
+        var article = document.querySelector('[data-wiki-article-snippets]');
+        var textInput = form.querySelector('[data-wiki-snippet-text]');
+        var preview = form.querySelector('[data-wiki-snippet-preview]');
+        var cancel = form.querySelector('[data-wiki-snippet-cancel]');
+        var locked = false;
+
+        if (!article || !textInput || !preview || !window.getSelection) {
+            return;
+        }
+
+        function compactText(value) {
+            return String(value || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function selectionRange() {
+            var selection = window.getSelection();
+            if (!selection || selection.isCollapsed || !selection.rangeCount) {
+                return null;
+            }
+
+            var range = selection.getRangeAt(0);
+            var container = range.commonAncestorContainer;
+            if (container && 1 !== container.nodeType) {
+                container = container.parentNode;
+            }
+
+            if (!container || !article.contains(container)) {
+                return null;
+            }
+
+            return range;
+        }
+
+        function hideForm(clearSelection) {
+            form.hidden = true;
+            textInput.value = '';
+            preview.textContent = '';
+
+            if (clearSelection) {
+                var selection = window.getSelection();
+                if (selection && selection.removeAllRanges) {
+                    selection.removeAllRanges();
+                }
+            }
+        }
+
+        function positionForm(range) {
+            var rect = range.getBoundingClientRect();
+            if (!rect) {
+                return;
+            }
+
+            form.hidden = false;
+            var width = form.offsetWidth || 320;
+            var left = rect.left + (rect.width / 2);
+            left = Math.max(12 + (width / 2), Math.min(window.innerWidth - 12 - (width / 2), left));
+            var top = Math.min(window.innerHeight - 12 - (form.offsetHeight || 120), rect.bottom + 10);
+
+            form.style.left = left + 'px';
+            form.style.top = Math.max(12, top) + 'px';
+        }
+
+        function updateSelection() {
+            if (locked) {
+                return;
+            }
+
+            var range = selectionRange();
+            var text = range ? compactText(window.getSelection().toString()).slice(0, 20000) : '';
+
+            if (!text || text.length < 2) {
+                hideForm(false);
+                return;
+            }
+
+            textInput.value = text;
+            preview.textContent = text.length > 280 ? text.slice(0, 277) + '...' : text;
+            positionForm(range);
+        }
+
+        form.addEventListener('mousedown', function () {
+            locked = true;
+        });
+
+        form.addEventListener('mouseup', function () {
+            window.setTimeout(function () {
+                locked = false;
+            }, 120);
+        });
+
+        form.addEventListener('submit', function (event) {
+            if (!textInput.value.trim()) {
+                event.preventDefault();
+                hideForm(false);
+            }
+        });
+
+        if (cancel) {
+            cancel.addEventListener('click', function () {
+                locked = false;
+                hideForm(true);
+            });
+        }
+
+        document.addEventListener('selectionchange', updateSelection);
+        article.addEventListener('mouseup', function () {
+            window.setTimeout(updateSelection, 0);
+        });
+        article.addEventListener('keyup', function () {
+            window.setTimeout(updateSelection, 0);
+        });
+    });
+
     if (!window.fetch || !window.URLSearchParams) {
         return;
     }
