@@ -427,6 +427,7 @@
     document.querySelectorAll('[data-wiki-snippet-form]').forEach(function (form) {
         var article = document.querySelector('[data-wiki-article-snippets]');
         var textInput = form.querySelector('[data-wiki-snippet-text]');
+        var htmlInput = form.querySelector('[data-wiki-snippet-html]');
         var cancel = form.querySelector('[data-wiki-snippet-cancel]');
         var submit = form.querySelector('button[type="submit"]');
         var locked = false;
@@ -437,6 +438,62 @@
 
         function compactText(value) {
             return String(value || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function selectionHtml(range) {
+            var fragment;
+            var container;
+            var wrappers;
+
+            if (!range || !range.cloneContents) {
+                return '';
+            }
+
+            fragment = range.cloneContents();
+            container = document.createElement('div');
+            container.appendChild(fragment);
+            wrappers = selectionInlineWrappers(range);
+
+            return wrappers.reduce(function (html, wrapper) {
+                var inner = document.createElement('div');
+                var clone = wrapper.cloneNode(false);
+                clone.innerHTML = html;
+                inner.appendChild(clone);
+                return inner.innerHTML;
+            }, container.innerHTML);
+        }
+
+        function selectionInlineWrappers(range) {
+            var wrappers = [];
+            var node = range.startContainer;
+            var inlineTags = {
+                A: true,
+                B: true,
+                CODE: true,
+                DEL: true,
+                EM: true,
+                I: true,
+                INS: true,
+                MARK: true,
+                S: true,
+                SMALL: true,
+                STRONG: true,
+                SUB: true,
+                SUP: true
+            };
+
+            if (node && 1 !== node.nodeType) {
+                node = node.parentNode;
+            }
+
+            while (node && node !== article) {
+                if (1 === node.nodeType && inlineTags[node.tagName] && node.contains(range.endContainer)) {
+                    wrappers.push(node);
+                }
+                node = node.parentNode;
+            }
+
+            return wrappers;
         }
 
         function selectionRange() {
@@ -461,6 +518,9 @@
         function hideForm(clearSelection) {
             form.hidden = true;
             textInput.value = '';
+            if (htmlInput) {
+                htmlInput.value = '';
+            }
 
             if (clearSelection) {
                 var selection = window.getSelection();
@@ -493,6 +553,7 @@
 
             var range = selectionRange();
             var text = range ? compactText(window.getSelection().toString()).slice(0, 20000) : '';
+            var html = range ? selectionHtml(range).slice(0, 50000) : '';
 
             if (!text || text.length < 2) {
                 hideForm(false);
@@ -500,6 +561,9 @@
             }
 
             textInput.value = text;
+            if (htmlInput) {
+                htmlInput.value = html;
+            }
             positionForm(range);
         }
 
