@@ -2,18 +2,12 @@
 	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
 	"meta": {
 		"title": "Wikipedia App",
-		"description": "Search, browse, language-switch, save, and refetch Wikipedia articles in a WpApp plugin.",
+		"description": "Search, browse, and save Wikipedia articles.",
 		"author": "Alex Kirk"
 	},
 	"landingPage": "/wikipedia/",
 	"login": true,
 	"steps": [
-		{
-			"step": "setSiteOptions",
-			"options": {
-				"permalink_structure": "/%postname%/"
-			}
-		},
 		{
 			"step": "activatePlugin",
 			"pluginName": "Wikipedia App",
