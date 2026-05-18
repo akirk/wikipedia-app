@@ -122,6 +122,16 @@ class AppHelpersTest extends TestCase {
         $this->assertSame( '', $this->invokePrivateStatic( 'app_url_from_wikipedia_href', [ 'https://example.com/wiki/Albert_Einstein', 'en' ] ) );
     }
 
+    public function test_article_resource_nodes_are_removed(): void {
+        $html = '<style>.mw-parser-output .hatnote{font-style:italic}</style><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles"><p>Article body</p>';
+        $cleaned = $this->invokePrivateStatic( 'remove_article_resource_nodes', [ $html ] );
+
+        $this->assertStringNotContainsString( 'mw-parser-output', $cleaned );
+        $this->assertStringNotContainsString( '<style', $cleaned );
+        $this->assertStringNotContainsString( '<link', $cleaned );
+        $this->assertStringContainsString( 'Article body', $cleaned );
+    }
+
     private function invokePrivateStatic( string $method, array $args ) {
         $reflection = new ReflectionMethod( App::class, $method );
         $reflection->setAccessible( true );
