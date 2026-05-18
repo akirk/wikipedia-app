@@ -91,11 +91,12 @@ $wiki_current_nav = isset( $wiki_current_nav ) ? sanitize_key( $wiki_current_nav
         .wiki-search label { display: grid; gap: 0.25rem; margin: 0; font-weight: 600; }
         .wiki-search span { color: var(--wiki-muted); font-size: 0.82rem; font-weight: 500; }
         .wiki-search-field { position: relative; }
-        input[type="search"], input[type="text"], select {
+        input[type="search"], input[type="text"], select, textarea {
             width: 100%; height: var(--wiki-control-height); min-height: var(--wiki-control-height); box-sizing: border-box; padding: 0 var(--wiki-control-pad-x); border: 1px solid var(--wiki-line); border-radius: 2px; background: var(--wiki-card); color: var(--wiki-fg); font: inherit; line-height: 1.2;
         }
+        textarea { height: auto; min-height: 5.5rem; padding-top: 0.45rem; padding-bottom: 0.45rem; line-height: 1.45; resize: vertical; }
         input[type="search"], input[type="text"] { appearance: none; }
-        input:focus, select:focus, button:focus, a:focus { outline: 2px solid var(--wiki-focus); outline-offset: 2px; }
+        input:focus, select:focus, textarea:focus, button:focus, a:focus { outline: 2px solid var(--wiki-focus); outline-offset: 2px; }
         .wiki-btn, button.wiki-btn {
             display: inline-flex; align-items: center; justify-content: center; height: var(--wiki-control-height); min-height: var(--wiki-control-height); box-sizing: border-box; padding: 0 var(--wiki-control-pad-x); border: 1px solid var(--wiki-primary); border-radius: 2px; background: var(--wiki-primary); color: #fff; font: inherit; font-weight: 600; line-height: 1.2; text-decoration: none; text-transform: none; cursor: pointer; white-space: nowrap;
         }
@@ -161,6 +162,23 @@ $wiki_current_nav = isset( $wiki_current_nav ) ? sanitize_key( $wiki_current_nav
         .wiki-language-result:hover, .wiki-language-result:focus { background: var(--wiki-card-alt); color: var(--wiki-primary); outline: 0; }
         .wiki-settings-actions { margin: 1rem 0; }
         .wiki-article-tools { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; margin: 0.65rem 0 0; }
+        .wiki-snippets { margin: 0 0 1rem; padding: 0 0 0.9rem; border-bottom: 1px solid var(--wiki-line); }
+        .wiki-snippets[hidden] { display: none; }
+        .wiki-snippets-head { margin-top: 0; }
+        .wiki-snippet-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+        .wiki-snippet { padding: 0.65rem 0; border-bottom: 1px solid var(--wiki-line-soft); }
+        .wiki-snippet:last-child { border-bottom: 0; }
+        .wiki-snippet-content { margin: 0 0 0.45rem; padding: 0 0 0 0.75rem; border-left: 3px solid var(--wiki-line); color: var(--wiki-fg); }
+        .wiki-snippet-content > :first-child { margin-top: 0; }
+        .wiki-snippet-content > :last-child { margin-bottom: 0; }
+        .wiki-snippet-edit { display: grid; gap: 0.45rem; margin: 0.5rem 0 0; }
+        .wiki-snippet-edit[hidden] { display: none; }
+        .wiki-snippet-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; justify-content: space-between; }
+        .wiki-snippet-buttons, .wiki-snippet-edit-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+        .wiki-snippet-delete { display: inline-flex; }
+        .wiki-selection-snippet { position: fixed; z-index: 60; top: 1rem; left: 50%; width: auto; box-sizing: border-box; padding: 0.35rem; border: 1px solid var(--wiki-line); background: var(--wiki-card); box-shadow: 0 0.3rem 0.8rem rgba(0, 0, 0, 0.16); transform: translateX(-50%); }
+        .wiki-selection-snippet[hidden] { display: none; }
+        .wiki-selection-snippet-actions { display: flex; gap: 0.35rem; justify-content: flex-end; }
         .wiki-article { background: transparent; border: 0; border-radius: 0; padding: 0; overflow-wrap: anywhere; font-size: 0.95rem; }
         .wiki-article p { margin: 0.5rem 0; }
         .wiki-article img { max-width: 100%; height: auto; }

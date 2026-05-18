@@ -249,6 +249,325 @@ if ( ! defined( 'ABSPATH' ) ) {
         });
     });
 
+    function appendSnippetHidden(parent, name, value) {
+        var field = document.createElement('input');
+        field.type = 'hidden';
+        field.name = name;
+        field.value = value || '';
+        parent.appendChild(field);
+        return field;
+    }
+
+    function requestSnippet(form) {
+        var ajaxUrl = form.getAttribute('data-wiki-ajax-url') || '';
+        if (!ajaxUrl || !window.fetch || !window.FormData) {
+            return null;
+        }
+
+        return fetch(ajaxUrl, {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json'
+            }
+        }).then(function (response) {
+            return response.json().catch(function () {
+                return null;
+            }).then(function (data) {
+                if (!response.ok || !data || !data.success) {
+                    var message = data && data.data && data.data.message ? data.data.message : 'Could not save snippet.';
+                    throw new Error(message);
+                }
+
+                return data.data || {};
+            });
+        });
+    }
+
+    function snippetStatusText(snippet) {
+        return snippet && snippet.updated_at_display ? 'Updated ' + snippet.updated_at_display : 'Saved snippet';
+    }
+
+    function renderSnippetHtml(snippet) {
+        return snippet && snippet.html ? snippet.html : (snippet && snippet.content ? snippet.content : '');
+    }
+
+    function updateSnippetCount(delta) {
+        var section = document.querySelector('[data-wiki-snippets]');
+        if (!section) {
+            return;
+        }
+
+        var current = parseInt(section.getAttribute('data-snippet-count') || '0', 10);
+        var count = Math.max(0, current + delta);
+        var label = section.querySelector('[data-wiki-snippet-count]');
+        var singular = section.getAttribute('data-count-singular') || 'snippet';
+        var plural = section.getAttribute('data-count-plural') || 'snippets';
+
+        section.setAttribute('data-snippet-count', String(count));
+        section.hidden = 0 === count;
+
+        if (label) {
+            label.textContent = count + ' ' + (1 === count ? singular : plural);
+        }
+    }
+
+    function createSnippetItem(snippet, sourceForm) {
+        var item = document.createElement('li');
+        var content = document.createElement('div');
+        var tools = document.createElement('div');
+        var status = document.createElement('span');
+        var buttons = document.createElement('div');
+        var adminPostUrl = sourceForm.getAttribute('action') || '';
+        var ajaxUrl = sourceForm.getAttribute('data-wiki-ajax-url') || '';
+        var postId = snippet && snippet.post_id ? String(snippet.post_id) : '';
+
+        item.className = 'wiki-snippet';
+        item.id = 'wiki-snippet-' + postId;
+
+        content.className = 'wiki-snippet-content';
+        content.setAttribute('data-wiki-snippet-content', '');
+        content.innerHTML = renderSnippetHtml(snippet);
+        item.appendChild(content);
+
+        tools.className = 'wiki-snippet-tools';
+        status.className = 'wiki-meta';
+        status.setAttribute('data-wiki-snippet-status', '');
+        status.textContent = snippetStatusText(snippet);
+        tools.appendChild(status);
+
+        buttons.className = 'wiki-snippet-buttons';
+
+        if (snippet && snippet.edit_url) {
+            var openEditor = document.createElement('a');
+            openEditor.className = 'wiki-btn secondary';
+            openEditor.href = snippet.edit_url;
+            openEditor.textContent = 'Edit snippet';
+            buttons.appendChild(openEditor);
+        }
+
+        var deleteForm = document.createElement('form');
+        deleteForm.className = 'wiki-inline-form wiki-snippet-delete';
+        deleteForm.method = 'post';
+        deleteForm.action = adminPostUrl;
+        deleteForm.setAttribute('data-wiki-snippet-delete', '');
+        deleteForm.setAttribute('data-wiki-ajax-url', ajaxUrl);
+        appendSnippetHidden(deleteForm, 'action', 'wikipedia_delete_snippet');
+        appendSnippetHidden(deleteForm, '_wpnonce', snippet && snippet.delete_nonce ? snippet.delete_nonce : '');
+        appendSnippetHidden(deleteForm, 'post_id', postId);
+        var deleteButton = document.createElement('button');
+        deleteButton.className = 'wiki-btn secondary';
+        deleteButton.type = 'submit';
+        deleteButton.textContent = 'Delete';
+        deleteForm.appendChild(deleteButton);
+        buttons.appendChild(deleteForm);
+
+        tools.appendChild(buttons);
+        item.appendChild(tools);
+
+        return item;
+    }
+
+    function insertSnippet(snippet, sourceForm) {
+        var section = document.querySelector('[data-wiki-snippets]');
+        var list = section ? section.querySelector('[data-wiki-snippet-list]') : null;
+        if (!section || !list || !snippet || !snippet.post_id) {
+            return false;
+        }
+
+        list.insertBefore(createSnippetItem(snippet, sourceForm), list.firstChild);
+        updateSnippetCount(1);
+        return true;
+    }
+
+    document.addEventListener('submit', function (event) {
+        var deleteForm = event.target.closest ? event.target.closest('[data-wiki-snippet-delete]') : null;
+        var form = deleteForm;
+        var request = form ? requestSnippet(form) : null;
+
+        if (!form || !request) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var button = form.querySelector('button[type="submit"]');
+        if (button) {
+            button.disabled = true;
+        }
+
+        request.then(function (data) {
+            var snippet = data.snippet || {};
+            var item = form.closest('.wiki-snippet');
+
+            if (item) {
+                item.remove();
+                updateSnippetCount(-1);
+            }
+        }).catch(function (error) {
+            var item = form.closest('.wiki-snippet');
+            var status = item ? item.querySelector('[data-wiki-snippet-status]') : null;
+            if (status) {
+                status.textContent = error.message || 'Could not save snippet.';
+            }
+        }).finally(function () {
+            if (button) {
+                button.disabled = false;
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-wiki-snippet-form]').forEach(function (form) {
+        var article = document.querySelector('[data-wiki-article-snippets]');
+        var textInput = form.querySelector('[data-wiki-snippet-text]');
+        var cancel = form.querySelector('[data-wiki-snippet-cancel]');
+        var submit = form.querySelector('button[type="submit"]');
+        var locked = false;
+
+        if (!article || !textInput || !window.getSelection) {
+            return;
+        }
+
+        function compactText(value) {
+            return String(value || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function selectionRange() {
+            var selection = window.getSelection();
+            if (!selection || selection.isCollapsed || !selection.rangeCount) {
+                return null;
+            }
+
+            var range = selection.getRangeAt(0);
+            var container = range.commonAncestorContainer;
+            if (container && 1 !== container.nodeType) {
+                container = container.parentNode;
+            }
+
+            if (!container || !article.contains(container)) {
+                return null;
+            }
+
+            return range;
+        }
+
+        function hideForm(clearSelection) {
+            form.hidden = true;
+            textInput.value = '';
+
+            if (clearSelection) {
+                var selection = window.getSelection();
+                if (selection && selection.removeAllRanges) {
+                    selection.removeAllRanges();
+                }
+            }
+        }
+
+        function positionForm(range) {
+            var rect = range.getBoundingClientRect();
+            if (!rect) {
+                return;
+            }
+
+            form.hidden = false;
+            var width = form.offsetWidth || 320;
+            var left = rect.left + (rect.width / 2);
+            left = Math.max(12 + (width / 2), Math.min(window.innerWidth - 12 - (width / 2), left));
+            var top = Math.min(window.innerHeight - 12 - (form.offsetHeight || 120), rect.bottom + 10);
+
+            form.style.left = left + 'px';
+            form.style.top = Math.max(12, top) + 'px';
+        }
+
+        function updateSelection() {
+            if (locked) {
+                return;
+            }
+
+            var range = selectionRange();
+            var text = range ? compactText(window.getSelection().toString()).slice(0, 20000) : '';
+
+            if (!text || text.length < 2) {
+                hideForm(false);
+                return;
+            }
+
+            textInput.value = text;
+            positionForm(range);
+        }
+
+        form.addEventListener('mousedown', function () {
+            locked = true;
+        });
+
+        form.addEventListener('mouseup', function () {
+            window.setTimeout(function () {
+                locked = false;
+            }, 120);
+        });
+
+        form.addEventListener('submit', function (event) {
+            if (!textInput.value.trim()) {
+                event.preventDefault();
+                hideForm(false);
+                return;
+            }
+
+            var request = requestSnippet(form);
+            if (!request) {
+                return;
+            }
+
+            event.preventDefault();
+            if (submit) {
+                submit.disabled = true;
+                submit.textContent = form.getAttribute('data-saving-text') || 'Saving...';
+            }
+
+            request.then(function (data) {
+                var inserted = insertSnippet(data.snippet || {}, form);
+                if (submit) {
+                    submit.textContent = form.getAttribute('data-saved-text') || 'Snippet saved.';
+                }
+                if (inserted) {
+                    hideForm(true);
+                } else {
+                    window.setTimeout(function () {
+                        hideForm(true);
+                    }, 900);
+                }
+            }).catch(function (error) {
+                if (submit) {
+                    submit.textContent = error.message || form.getAttribute('data-error-text') || 'Could not save snippet.';
+                }
+            }).finally(function () {
+                window.setTimeout(function () {
+                    if (submit) {
+                        submit.disabled = false;
+                        submit.textContent = 'Save snippet';
+                    }
+                }, 900);
+            });
+        });
+
+        if (cancel) {
+            cancel.addEventListener('click', function () {
+                locked = false;
+                hideForm(true);
+            });
+        }
+
+        article.addEventListener('mousedown', function () {
+            if (!locked) {
+                hideForm(false);
+            }
+        });
+        article.addEventListener('mouseup', function () {
+            window.setTimeout(updateSelection, 0);
+        });
+    });
+
     if (!window.fetch || !window.URLSearchParams) {
         return;
     }

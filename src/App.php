@@ -6,7 +6,10 @@ use WpApp\BaseApp;
 use WpApp\WpApp;
 
 class App extends BaseApp {
+    use Snippets;
+
     const POST_TYPE = 'wikipedia_article';
+    const POST_TYPE_SNIPPET = 'wikipedia_snippet';
     const TAX_LIST  = 'wikipedia_list';
 
     const USER_META_LANGUAGES = '_wikipedia_preferred_languages';
@@ -19,9 +22,15 @@ class App extends BaseApp {
     const META_REMOTE_TOUCHED = '_wikipedia_remote_touched';
     const META_SAVED_AT       = '_wikipedia_saved_at';
     const META_REFETCHED_AT   = '_wikipedia_refetched_at';
+    const META_SNIPPET_ORIGINAL_TEXT = '_wikipedia_snippet_original_text';
+    const META_SNIPPET_CREATED_AT    = '_wikipedia_snippet_created_at';
+    const META_SNIPPET_UPDATED_AT    = '_wikipedia_snippet_updated_at';
 
     const NONCE_SAVE_ARTICLE    = 'wikipedia_save_article';
     const NONCE_REFETCH_ARTICLE = 'wikipedia_refetch_article';
+    const NONCE_SAVE_SNIPPET    = 'wikipedia_save_snippet';
+    const NONCE_UPDATE_SNIPPET  = 'wikipedia_update_snippet';
+    const NONCE_DELETE_SNIPPET  = 'wikipedia_delete_snippet';
     const NONCE_SAVE_SETTINGS   = 'wikipedia_save_settings';
 
     public function __construct() {
@@ -34,6 +43,12 @@ class App extends BaseApp {
         add_action( 'init', [ $this, 'register_post_types' ] );
         add_action( 'admin_post_wikipedia_save_article', [ $this, 'handle_save_article' ] );
         add_action( 'admin_post_wikipedia_refetch_article', [ $this, 'handle_refetch_article' ] );
+        add_action( 'admin_post_wikipedia_save_snippet', [ $this, 'handle_save_snippet' ] );
+        add_action( 'admin_post_wikipedia_update_snippet', [ $this, 'handle_update_snippet' ] );
+        add_action( 'admin_post_wikipedia_delete_snippet', [ $this, 'handle_delete_snippet' ] );
+        add_action( 'wp_ajax_wikipedia_save_snippet', [ $this, 'ajax_save_snippet' ] );
+        add_action( 'wp_ajax_wikipedia_update_snippet', [ $this, 'ajax_update_snippet' ] );
+        add_action( 'wp_ajax_wikipedia_delete_snippet', [ $this, 'ajax_delete_snippet' ] );
         add_action( 'admin_post_wikipedia_save_settings', [ $this, 'handle_save_settings' ] );
         add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', [ $this, 'register_admin_columns' ] );
         add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', [ $this, 'render_admin_column' ], 10, 2 );
@@ -97,6 +112,30 @@ class App extends BaseApp {
             'rewrite'             => false,
         ] );
 
+        register_post_type( self::POST_TYPE_SNIPPET, [
+            'labels' => [
+                'name'               => __( 'Wikipedia Snippets', 'wikipedia' ),
+                'singular_name'      => __( 'Wikipedia Snippet', 'wikipedia' ),
+                'add_new_item'       => __( 'Add New Wikipedia Snippet', 'wikipedia' ),
+                'edit_item'          => __( 'Edit Wikipedia Snippet', 'wikipedia' ),
+                'new_item'           => __( 'New Wikipedia Snippet', 'wikipedia' ),
+                'view_item'          => __( 'View Wikipedia Snippet', 'wikipedia' ),
+                'search_items'       => __( 'Search Wikipedia Snippets', 'wikipedia' ),
+                'not_found'          => __( 'No Wikipedia snippets found.', 'wikipedia' ),
+                'not_found_in_trash' => __( 'No Wikipedia snippets found in Trash.', 'wikipedia' ),
+            ],
+            'public'              => false,
+            'show_ui'             => true,
+            'show_in_menu'        => 'edit.php?post_type=' . self::POST_TYPE,
+            'show_in_rest'        => true,
+            'menu_icon'           => 'dashicons-excerpt-view',
+            'supports'            => [ 'title', 'editor', 'author', 'revisions', 'custom-fields' ],
+            'capability_type'     => 'post',
+            'map_meta_cap'        => true,
+            'exclude_from_search' => true,
+            'rewrite'             => false,
+        ] );
+
         register_taxonomy( self::TAX_LIST, self::POST_TYPE, [
             'labels' => [
                 'name'          => __( 'Lists', 'wikipedia' ),
@@ -129,30 +168,52 @@ class App extends BaseApp {
             return current_user_can( 'edit_posts' );
         };
 
-        register_post_meta( self::POST_TYPE, self::META_PAGE_ID, [
-            'type'              => 'integer',
-            'single'            => true,
-            'show_in_rest'      => true,
-            'sanitize_callback' => 'absint',
-            'auth_callback'     => $auth_callback,
-        ] );
+        foreach ( [ self::POST_TYPE, self::POST_TYPE_SNIPPET ] as $post_type ) {
+            register_post_meta( $post_type, self::META_PAGE_ID, [
+                'type'              => 'integer',
+                'single'            => true,
+                'show_in_rest'      => true,
+                'sanitize_callback' => 'absint',
+                'auth_callback'     => $auth_callback,
+            ] );
 
-        foreach ( [ self::META_LANGUAGE, self::META_LAST_REVISION, self::META_REMOTE_TOUCHED, self::META_SAVED_AT, self::META_REFETCHED_AT ] as $meta_key ) {
-            register_post_meta( self::POST_TYPE, $meta_key, [
+            foreach ( [ self::META_LANGUAGE, self::META_LAST_REVISION, self::META_REMOTE_TOUCHED, self::META_SAVED_AT, self::META_REFETCHED_AT ] as $meta_key ) {
+                register_post_meta( $post_type, $meta_key, [
+                    'type'              => 'string',
+                    'single'            => true,
+                    'show_in_rest'      => true,
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'auth_callback'     => $auth_callback,
+                ] );
+            }
+
+            foreach ( [ self::META_SOURCE_URL, self::META_THUMBNAIL_URL ] as $meta_key ) {
+                register_post_meta( $post_type, $meta_key, [
+                    'type'              => 'string',
+                    'single'            => true,
+                    'show_in_rest'      => true,
+                    'sanitize_callback' => 'esc_url_raw',
+                    'auth_callback'     => $auth_callback,
+                ] );
+            }
+        }
+
+        foreach ( [ self::META_SNIPPET_ORIGINAL_TEXT ] as $meta_key ) {
+            register_post_meta( self::POST_TYPE_SNIPPET, $meta_key, [
                 'type'              => 'string',
                 'single'            => true,
                 'show_in_rest'      => true,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => 'sanitize_textarea_field',
                 'auth_callback'     => $auth_callback,
             ] );
         }
 
-        foreach ( [ self::META_SOURCE_URL, self::META_THUMBNAIL_URL ] as $meta_key ) {
-            register_post_meta( self::POST_TYPE, $meta_key, [
+        foreach ( [ self::META_SNIPPET_CREATED_AT, self::META_SNIPPET_UPDATED_AT ] as $meta_key ) {
+            register_post_meta( self::POST_TYPE_SNIPPET, $meta_key, [
                 'type'              => 'string',
                 'single'            => true,
                 'show_in_rest'      => true,
-                'sanitize_callback' => 'esc_url_raw',
+                'sanitize_callback' => 'sanitize_text_field',
                 'auth_callback'     => $auth_callback,
             ] );
         }
@@ -263,7 +324,7 @@ class App extends BaseApp {
 
         wp_register_ability_category( 'wikipedia', [
             'label'       => __( 'Wikipedia', 'wikipedia' ),
-            'description' => __( 'Search, browse, save, and refetch Wikipedia articles.', 'wikipedia' ),
+            'description' => __( 'Search, browse, save, refetch, and annotate Wikipedia articles.', 'wikipedia' ),
         ] );
     }
 
@@ -414,7 +475,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wikipedia/get-saved-article', [
             'label'               => __( 'Get Saved Wikipedia Article', 'wikipedia' ),
-            'description'         => 'Returns one locally saved wikipedia_article post by WordPress post ID, including saved content and Wikipedia source metadata.',
+            'description'         => 'Returns one locally saved wikipedia_article post by WordPress post ID, including saved content, snippets, and Wikipedia source metadata.',
             'category'            => 'wikipedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -435,6 +496,97 @@ class App extends BaseApp {
             'meta'                => [
                 'annotations' => [
                     'instructions' => 'Present the saved article title linked to view_url and include source_url when citing Wikipedia.',
+                    'readonly'     => true,
+                    'destructive'  => false,
+                    'idempotent'   => true,
+                ],
+            ],
+        ] );
+
+        wp_register_ability( 'wikipedia/save-snippet', [
+            'label'               => __( 'Save Wikipedia Snippet', 'wikipedia' ),
+            'description'         => 'Creates or updates a wikipedia_snippet post for selected article text. New snippets are attached to a saved wikipedia_article parent; when needed the parent article is saved first.',
+            'category'            => 'wikipedia',
+            'input_schema'        => self::snippet_save_input_schema(),
+            'output_schema'       => self::snippet_output_schema( true ),
+            'execute_callback'    => [ $this, 'ability_save_snippet' ],
+            'permission_callback' => function() {
+                return current_user_can( 'edit_posts' );
+            },
+            'meta'                => [
+                'annotations' => [
+                    'instructions' => 'Use parent_post_id when the saved article already exists. Otherwise provide page_id or title with language so the article can be saved before the snippet is attached.',
+                    'readonly'     => false,
+                    'destructive'  => false,
+                    'idempotent'   => false,
+                ],
+            ],
+        ] );
+
+        wp_register_ability( 'wikipedia/get-snippet', [
+            'label'               => __( 'Get Wikipedia Snippet', 'wikipedia' ),
+            'description'         => 'Returns one saved wikipedia_snippet post, including edited text, parent saved article, source metadata, and app URLs.',
+            'category'            => 'wikipedia',
+            'input_schema'        => [
+                'type'                 => 'object',
+                'properties'           => [
+                    'post_id' => [
+                        'type'        => 'integer',
+                        'description' => 'WordPress snippet post ID from wikipedia/search-snippets or wikipedia/save-snippet.',
+                    ],
+                ],
+                'required'             => [ 'post_id' ],
+                'additionalProperties' => false,
+            ],
+            'output_schema'       => self::snippet_output_schema( true ),
+            'execute_callback'    => [ $this, 'ability_get_snippet' ],
+            'permission_callback' => function() {
+                return current_user_can( 'read' );
+            },
+            'meta'                => [
+                'annotations' => [
+                    'instructions' => 'Present the snippet text and link view_url; use parent_post_id with wikipedia/get-saved-article for full article context.',
+                    'readonly'     => true,
+                    'destructive'  => false,
+                    'idempotent'   => true,
+                ],
+            ],
+        ] );
+
+        wp_register_ability( 'wikipedia/search-snippets', [
+            'label'               => __( 'Search Wikipedia Snippets', 'wikipedia' ),
+            'description'         => 'Searches saved wikipedia_snippet posts, optionally filtered by parent saved article or Wikipedia language.',
+            'category'            => 'wikipedia',
+            'input_schema'        => [
+                'type'                 => 'object',
+                'properties'           => [
+                    'search'         => [
+                        'type'        => 'string',
+                        'description' => 'Optional search term for snippet text and titles. Omit to list recent snippets.',
+                    ],
+                    'parent_post_id' => [
+                        'type'        => 'integer',
+                        'description' => 'Optional saved article parent post ID.',
+                    ],
+                    'language'       => [
+                        'type'        => 'string',
+                        'description' => 'Optional Wikipedia language subdomain to filter snippets.',
+                    ],
+                    'limit'          => [
+                        'type'        => 'integer',
+                        'description' => 'Maximum number of snippets, from 1 to 50.',
+                    ],
+                ],
+                'additionalProperties' => false,
+            ],
+            'output_schema'       => self::snippet_search_output_schema(),
+            'execute_callback'    => [ $this, 'ability_search_snippets' ],
+            'permission_callback' => function() {
+                return current_user_can( 'read' );
+            },
+            'meta'                => [
+                'annotations' => [
+                    'instructions' => 'Use post_id with wikipedia/get-snippet. Use parent_post_id with wikipedia/get-saved-article for the full saved article and all snippets.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -561,7 +713,7 @@ class App extends BaseApp {
     }
 
     public function register_ai_assistant_ability_domains( array $domains ): array {
-        $domains['wikipedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article';
+        $domains['wikipedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article, saved snippets, article annotations, selected text snippets';
         return $domains;
     }
 
@@ -576,6 +728,14 @@ class App extends BaseApp {
 
         if ( in_array( $ability_id, [ 'wikipedia/save-article', 'wikipedia/refetch-saved-article' ], true ) ) {
             return __( 'Confirm whether the Wikipedia article was saved or updated, and link it using view_url.', 'wikipedia' );
+        }
+
+        if ( in_array( $ability_id, [ 'wikipedia/save-snippet' ], true ) ) {
+            return __( 'Confirm the snippet was saved or updated, quote only the relevant snippet text briefly, and link view_url.', 'wikipedia' );
+        }
+
+        if ( in_array( $ability_id, [ 'wikipedia/get-snippet', 'wikipedia/search-snippets' ], true ) ) {
+            return __( 'Present snippets as concise notes with parent article titles and view_url links. Use parent_post_id for article context when needed.', 'wikipedia' );
         }
 
         if ( in_array( $ability_id, [ 'wikipedia/get-article', 'wikipedia/get-saved-article' ], true ) ) {
@@ -977,6 +1137,7 @@ class App extends BaseApp {
         if ( $include_content ) {
             $article['content'] = $post->post_content;
             $article['html']    = $post->post_content;
+            $article['snippets'] = self::get_saved_article_snippets( $post_id, true );
         }
 
         return array_merge( $article, $extra );
@@ -1783,6 +1944,10 @@ class App extends BaseApp {
 
         if ( $include_content ) {
             $properties['content'] = [ 'type' => 'string' ];
+            $properties['snippets'] = [
+                'type'  => 'array',
+                'items' => self::snippet_schema( true ),
+            ];
         }
 
         return [
