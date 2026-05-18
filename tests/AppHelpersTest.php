@@ -132,6 +132,36 @@ class AppHelpersTest extends TestCase {
         );
     }
 
+    public function test_snippet_content_preserves_links_from_html(): void {
+        $content = $this->invokePrivateStatic( 'snippet_content_for_storage', [
+            'Albert relativity & science',
+            '<p>Albert <a class="mw-redirect" onclick="alert(1)" href="https://example.test/wikipedia/article/en?title=Relativity">relativity</a> &amp; science</p>',
+        ] );
+
+        $this->assertStringContainsString( '<a href="https://example.test/wikipedia/article/en?title=Relativity">relativity</a>', $content );
+        $this->assertStringNotContainsString( 'onclick', $content );
+        $this->assertStringNotContainsString( 'mw-redirect', $content );
+        $this->assertSame(
+            'Albert relativity & science',
+            $this->invokePrivateStatic( 'snippet_plain_text_from_content', [ $content ] )
+        );
+    }
+
+    public function test_snippet_content_drops_unsafe_html_from_links(): void {
+        $content = $this->invokePrivateStatic( 'snippet_content_for_storage', [
+            'Safe bad link and encoded link and bold',
+            '<p>Safe <a href="javascript:alert(1)">bad link</a> and <a href="java&#x0A;script:alert(1)">encoded link</a><script>alert(1)</script> and <strong>bold</strong></p>',
+        ] );
+
+        $this->assertStringContainsString( 'Safe bad link and encoded link and <strong>bold</strong>', $content );
+        $this->assertStringNotContainsString( 'javascript:', $content );
+        $this->assertStringNotContainsString( '<script', $content );
+        $this->assertSame(
+            'Safe bad link and encoded link and bold',
+            $this->invokePrivateStatic( 'snippet_plain_text_from_content', [ $content ] )
+        );
+    }
+
     public function test_wikipedia_article_href_is_rewritten_to_app_url(): void {
         $this->assertSame(
             'https://example.test/wikipedia/article/en?title=Albert%20Einstein#Life',

@@ -112,6 +112,7 @@ if ( $is_saved_view ) {
         <?php wp_nonce_field( App::NONCE_SAVE_SNIPPET ); ?>
         <input type="hidden" name="action" value="wikipedia_save_snippet">
         <input type="hidden" name="text" value="" data-wiki-snippet-text>
+        <input type="hidden" name="html" value="" data-wiki-snippet-html>
         <?php if ( $is_saved_view && ! empty( $article['post_id'] ) ) : ?>
             <input type="hidden" name="parent_post_id" value="<?php echo esc_attr( $article['post_id'] ); ?>">
         <?php else : ?>

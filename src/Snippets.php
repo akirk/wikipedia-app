@@ -162,7 +162,8 @@ trait Snippets {
             return self::update_wikipedia_snippet( $snippet_id, $input );
         }
 
-        $text = self::normalize_snippet_text( self::input_text_value( $input, [ 'text', 'content' ] ) );
+        $snippet_content = self::snippet_content_from_input( $input );
+        $text = $snippet_content['text'];
         if ( '' === $text ) {
             return new \WP_Error( 'wikipedia_empty_snippet', __( 'Select or provide snippet text.', 'wikipedia' ) );
         }
@@ -184,7 +185,7 @@ trait Snippets {
         $post_id = wp_insert_post( [
             'post_type'    => self::POST_TYPE_SNIPPET,
             'post_title'   => $snippet_title,
-            'post_content' => self::snippet_content_for_storage( $text ),
+            'post_content' => $snippet_content['content'],
             'post_excerpt' => self::snippet_excerpt( $text, 32 ),
             'post_status'  => $post_status,
             'post_parent'  => $parent_post_id,
@@ -217,7 +218,8 @@ trait Snippets {
             return new \WP_Error( 'wikipedia_cannot_update_snippet', __( 'You are not allowed to update this Wikipedia snippet.', 'wikipedia' ) );
         }
 
-        $text = self::normalize_snippet_text( self::input_text_value( $input, [ 'text', 'content' ] ) );
+        $snippet_content = self::snippet_content_from_input( $input );
+        $text = $snippet_content['text'];
         if ( '' === $text ) {
             return new \WP_Error( 'wikipedia_empty_snippet', __( 'Snippet text cannot be empty.', 'wikipedia' ) );
         }
@@ -234,7 +236,7 @@ trait Snippets {
         $updated = wp_update_post( [
             'ID'           => $snippet_id,
             'post_title'   => $snippet_title,
-            'post_content' => self::snippet_content_for_storage( $text ),
+            'post_content' => $snippet_content['content'],
             'post_excerpt' => self::snippet_excerpt( $text, 32 ),
             'post_status'  => $post_status,
         ], true );
@@ -508,6 +510,7 @@ trait Snippets {
             'post_status'    => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : '',
             'snippet_title'  => isset( $_POST['snippet_title'] ) ? sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) ) : '',
             'text'           => isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ? (string) wp_unslash( $_POST['text'] ) : '',
+            'html'           => isset( $_POST['html'] ) && is_scalar( $_POST['html'] ) ? (string) wp_unslash( $_POST['html'] ) : '',
         ];
     }
 
@@ -515,6 +518,7 @@ trait Snippets {
         return [
             'snippet_title' => isset( $_POST['snippet_title'] ) ? sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) ) : '',
             'text'          => isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ? (string) wp_unslash( $_POST['text'] ) : '',
+            'html'          => isset( $_POST['html'] ) && is_scalar( $_POST['html'] ) ? (string) wp_unslash( $_POST['html'] ) : '',
         ];
     }
 
@@ -553,6 +557,23 @@ trait Snippets {
         return '';
     }
 
+    private static function snippet_content_from_input( array $input ): array {
+        $text = self::normalize_snippet_text( self::input_text_value( $input, [ 'text', 'content' ] ) );
+        $html = self::input_text_value( $input, [ 'html' ] );
+        $content = self::snippet_content_for_storage( $text, $html );
+        $stored_text = self::snippet_plain_text_from_content( $content );
+
+        if ( '' === $stored_text && '' !== $text ) {
+            $content = self::snippet_content_for_storage( $text );
+            $stored_text = self::snippet_plain_text_from_content( $content );
+        }
+
+        return [
+            'content' => $content,
+            'text'    => $stored_text,
+        ];
+    }
+
     private static function normalize_snippet_text( string $text ): string {
         $charset = function_exists( 'get_option' ) ? ( get_option( 'blog_charset' ) ?: 'UTF-8' ) : 'UTF-8';
         $text = html_entity_decode( $text, ENT_QUOTES, $charset );
@@ -584,7 +605,15 @@ trait Snippets {
         return sanitize_text_field( $title );
     }
 
-    private static function snippet_content_for_storage( string $text ): string {
+    private static function snippet_content_for_storage( string $text, string $html = '' ): string {
+        $html = trim( $html );
+        if ( '' !== $html ) {
+            $content = self::snippet_html_content_for_storage( $html );
+            if ( '' !== $content ) {
+                return $content;
+            }
+        }
+
         $text = self::normalize_snippet_text( $text );
         if ( '' === $text ) {
             return '';
@@ -604,6 +633,263 @@ trait Snippets {
         }
 
         return implode( "\n\n", $blocks );
+    }
+
+    private static function snippet_html_content_for_storage( string $html ): string {
+        if ( '' === trim( $html ) || ! class_exists( '\DOMDocument' ) ) {
+            return '';
+        }
+
+        $previous = libxml_use_internal_errors( true );
+        $document = new \DOMDocument();
+        $flags = 0;
+        if ( defined( 'LIBXML_HTML_NOIMPLIED' ) ) {
+            $flags |= LIBXML_HTML_NOIMPLIED;
+        }
+        if ( defined( 'LIBXML_HTML_NODEFDTD' ) ) {
+            $flags |= LIBXML_HTML_NODEFDTD;
+        }
+
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wikipedia-app-snippet-root">' . $html . '</div>', $flags );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $previous );
+
+        if ( ! $loaded ) {
+            return '';
+        }
+
+        $root = $document->getElementById( 'wikipedia-app-snippet-root' );
+        if ( ! $root ) {
+            return '';
+        }
+
+        $paragraphs = [];
+        self::collect_snippet_html_paragraphs( $root, $paragraphs );
+
+        $blocks = [];
+        foreach ( $paragraphs as $paragraph ) {
+            $paragraph = self::trim_snippet_inline_html( $paragraph );
+            if ( '' === self::normalize_snippet_text( $paragraph ) ) {
+                continue;
+            }
+
+            $blocks[] = "<!-- wp:paragraph -->\n<p>" . $paragraph . "</p>\n<!-- /wp:paragraph -->";
+        }
+
+        return implode( "\n\n", $blocks );
+    }
+
+    private static function collect_snippet_html_paragraphs( \DOMNode $node, array &$paragraphs ): void {
+        $buffer = '';
+
+        foreach ( $node->childNodes as $child ) {
+            if ( XML_TEXT_NODE === $child->nodeType ) {
+                $buffer .= self::snippet_text_node_html( (string) $child->nodeValue );
+                continue;
+            }
+
+            if ( XML_ELEMENT_NODE !== $child->nodeType ) {
+                continue;
+            }
+
+            $tag_name = strtolower( $child->nodeName );
+            if ( isset( self::snippet_block_tags()[ $tag_name ] ) ) {
+                self::append_snippet_html_paragraph( $paragraphs, $buffer );
+                $buffer = '';
+
+                if ( self::snippet_contains_block_child( $child ) ) {
+                    self::collect_snippet_html_paragraphs( $child, $paragraphs );
+                } else {
+                    self::append_snippet_html_paragraph( $paragraphs, self::snippet_inline_children_html( $child ) );
+                }
+                continue;
+            }
+
+            $buffer .= self::snippet_inline_node_html( $child );
+        }
+
+        self::append_snippet_html_paragraph( $paragraphs, $buffer );
+    }
+
+    private static function append_snippet_html_paragraph( array &$paragraphs, string $html ): void {
+        $html = self::trim_snippet_inline_html( $html );
+        if ( '' === self::normalize_snippet_text( $html ) ) {
+            return;
+        }
+
+        $paragraphs[] = $html;
+    }
+
+    private static function snippet_contains_block_child( \DOMNode $node ): bool {
+        foreach ( $node->childNodes as $child ) {
+            if ( XML_ELEMENT_NODE !== $child->nodeType ) {
+                continue;
+            }
+
+            if ( isset( self::snippet_block_tags()[ strtolower( $child->nodeName ) ] ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function snippet_inline_node_html( \DOMNode $node ): string {
+        if ( XML_TEXT_NODE === $node->nodeType ) {
+            return self::snippet_text_node_html( (string) $node->nodeValue );
+        }
+
+        if ( XML_ELEMENT_NODE !== $node->nodeType ) {
+            return '';
+        }
+
+        $tag_name = strtolower( $node->nodeName );
+        if ( isset( self::snippet_dropped_tags()[ $tag_name ] ) ) {
+            return '';
+        }
+
+        if ( 'br' === $tag_name ) {
+            return '<br>';
+        }
+
+        $inner = self::snippet_inline_children_html( $node );
+        if ( '' === self::normalize_snippet_text( $inner ) ) {
+            return '';
+        }
+
+        if ( 'a' === $tag_name ) {
+            $href = $node instanceof \DOMElement ? self::snippet_sanitize_href( $node->getAttribute( 'href' ) ) : '';
+            if ( '' === $href ) {
+                return $inner;
+            }
+
+            $attributes = ' href="' . self::snippet_escape_attr( $href ) . '"';
+            if ( $node instanceof \DOMElement && '_blank' === $node->getAttribute( 'target' ) ) {
+                $attributes .= ' target="_blank" rel="noreferrer"';
+            }
+
+            return '<a' . $attributes . '>' . $inner . '</a>';
+        }
+
+        $allowed_tags = self::snippet_inline_tags();
+        if ( ! isset( $allowed_tags[ $tag_name ] ) ) {
+            return $inner;
+        }
+
+        return '<' . $allowed_tags[ $tag_name ] . '>' . $inner . '</' . $allowed_tags[ $tag_name ] . '>';
+    }
+
+    private static function snippet_inline_children_html( \DOMNode $node ): string {
+        $html = '';
+        foreach ( $node->childNodes as $child ) {
+            $html .= self::snippet_inline_node_html( $child );
+        }
+
+        return $html;
+    }
+
+    private static function snippet_text_node_html( string $text ): string {
+        $text = str_replace( "\xc2\xa0", ' ', $text );
+        $text = preg_replace( '/\s+/u', ' ', $text );
+
+        return self::snippet_escape_html( is_string( $text ) ? $text : '' );
+    }
+
+    private static function trim_snippet_inline_html( string $html ): string {
+        $html = preg_replace( '~^(?:\s|&nbsp;|<br\s*/?>)+~i', '', $html );
+        $html = preg_replace( '~(?:\s|&nbsp;|<br\s*/?>)+$~i', '', is_string( $html ) ? $html : '' );
+
+        return trim( is_string( $html ) ? $html : '' );
+    }
+
+    private static function snippet_sanitize_href( string $href ): string {
+        $href = trim( html_entity_decode( $href, ENT_QUOTES, 'UTF-8' ) );
+        $protocol_check = preg_replace( '/[\x00-\x20]+/', '', $href );
+        $protocol_check = is_string( $protocol_check ) ? $protocol_check : $href;
+
+        if ( '' === $href || preg_match( '~^(?:javascript|data|vbscript):~i', $protocol_check ) ) {
+            return '';
+        }
+
+        if ( preg_match( '~^[a-z][a-z0-9+.-]*:~i', $protocol_check ) && ! preg_match( '~^(?:https?|mailto):~i', $protocol_check ) ) {
+            return '';
+        }
+
+        return function_exists( 'esc_url_raw' ) ? esc_url_raw( $href ) : $href;
+    }
+
+    private static function snippet_block_tags(): array {
+        return [
+            'address'    => true,
+            'article'    => true,
+            'aside'      => true,
+            'blockquote' => true,
+            'dd'         => true,
+            'div'        => true,
+            'dl'         => true,
+            'dt'         => true,
+            'figcaption' => true,
+            'figure'     => true,
+            'footer'     => true,
+            'h1'         => true,
+            'h2'         => true,
+            'h3'         => true,
+            'h4'         => true,
+            'h5'         => true,
+            'h6'         => true,
+            'header'     => true,
+            'li'         => true,
+            'main'       => true,
+            'ol'         => true,
+            'p'          => true,
+            'pre'        => true,
+            'section'    => true,
+            'table'      => true,
+            'tbody'      => true,
+            'td'         => true,
+            'tfoot'      => true,
+            'th'         => true,
+            'thead'      => true,
+            'tr'         => true,
+            'ul'         => true,
+        ];
+    }
+
+    private static function snippet_inline_tags(): array {
+        return [
+            'b'      => 'strong',
+            'code'   => 'code',
+            'del'    => 'del',
+            'em'     => 'em',
+            'i'      => 'em',
+            'ins'    => 'ins',
+            'mark'   => 'mark',
+            's'      => 's',
+            'small'  => 'small',
+            'strong' => 'strong',
+            'sub'    => 'sub',
+            'sup'    => 'sup',
+        ];
+    }
+
+    private static function snippet_dropped_tags(): array {
+        return [
+            'button'   => true,
+            'embed'    => true,
+            'form'     => true,
+            'iframe'   => true,
+            'input'    => true,
+            'math'     => true,
+            'noscript' => true,
+            'object'   => true,
+            'option'   => true,
+            'script'   => true,
+            'select'   => true,
+            'style'    => true,
+            'svg'      => true,
+            'template' => true,
+            'textarea' => true,
+        ];
     }
 
     private static function snippet_plain_text_from_content( string $content ): string {
@@ -629,6 +915,14 @@ trait Snippets {
     private static function snippet_escape_html( string $text ): string {
         if ( function_exists( 'esc_html' ) ) {
             return esc_html( $text );
+        }
+
+        return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+    }
+
+    private static function snippet_escape_attr( string $text ): string {
+        if ( function_exists( 'esc_attr' ) ) {
+            return esc_attr( $text );
         }
 
         return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
@@ -670,6 +964,10 @@ trait Snippets {
                 'text'            => [
                     'type'        => 'string',
                     'description' => 'Snippet text to save. This can be selected article text or an edited condensation.',
+                ],
+                'html'            => [
+                    'type'        => 'string',
+                    'description' => 'Optional selected snippet HTML. Safe inline markup such as links is preserved when the snippet is stored.',
                 ],
                 'snippet_title'   => [
                     'type'        => 'string',
