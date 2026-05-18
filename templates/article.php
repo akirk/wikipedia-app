@@ -44,7 +44,11 @@ include __DIR__ . '/_search-form.php';
 <?php
 $language_tabs_query = $title;
 $language_tabs_article = $article;
-include __DIR__ . '/_language-tabs.php';
+if ( $article ) {
+    include __DIR__ . '/_article-language-tabs.php';
+} else {
+    include __DIR__ . '/_search-language-tabs.php';
+}
 ?>
 
 <section class="wiki-search-results" id="wiki-search-results" data-wiki-quicksearch-results aria-live="polite"></section>
