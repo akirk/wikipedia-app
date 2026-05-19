@@ -20,9 +20,9 @@ All app routes require a logged-in WordPress user. Reading uses normal `read` ac
 
 Wordopedia does not create custom database tables.
 
-- Saved articles use the `wikipedia_article` custom post type.
-- Saved snippets use the `wikipedia_snippet` custom post type and are attached to saved articles as child posts.
-- Article lists use the `wikipedia_list` taxonomy.
+- Saved articles use the `wordopedia_article` custom post type.
+- Saved snippets use the `wordopedia_snippet` custom post type and are attached to saved articles as child posts.
+- Article lists use the `wordopedia_list` taxonomy.
 - Wikipedia page IDs, language codes, source URLs, thumbnail URLs, revision IDs, saved dates, and refetch dates are stored as post meta.
 - Preferred language versions are stored per user in user meta.
 
@@ -41,19 +41,19 @@ Saved article and snippet post types are visible in the WordPress admin and REST
 
 ## Assistant and abilities integration
 
-When WordPress provides the Abilities API, Wordopedia registers abilities under the `wikipedia` category:
+When WordPress provides the Abilities API, Wordopedia registers abilities under the `wordopedia` category:
 
-- `wikipedia/search-articles`
-- `wikipedia/get-article`
-- `wikipedia/save-article`
-- `wikipedia/list-saved-articles`
-- `wikipedia/get-saved-article`
-- `wikipedia/refetch-saved-article`
-- `wikipedia/save-snippet`
-- `wikipedia/get-snippet`
-- `wikipedia/search-snippets`
+- `wordopedia/search-wikipedia`
+- `wordopedia/get-article`
+- `wordopedia/save-article`
+- `wordopedia/list-saved-articles`
+- `wordopedia/get-saved-article`
+- `wordopedia/refetch-saved-article`
+- `wordopedia/save-snippet`
+- `wordopedia/get-snippet`
+- `wordopedia/search-snippets`
 
-The plugin also adds AI assistant domain and instruction hints so assistant responses can link back to Wordopedia app URLs and cite Wikipedia source URLs where appropriate.
+The plugin also adds AI assistant domain, instruction, and welcome-tip hints so assistant responses can link back to Wordopedia app URLs, cite Wikipedia source URLs where appropriate, and suggest useful Wordopedia tasks from the app screens.
 
 ## Requirements
 

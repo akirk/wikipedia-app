@@ -1,13 +1,13 @@
 (function () {
-    var appConfig = window.wikipediaAppConfig || {};
-    var wikipediaApiUserAgent = appConfig.apiUserAgent || '';
+    var appConfig = window.wordopediaAppConfig || {};
+    var wordopediaApiUserAgent = appConfig.apiUserAgent || '';
     var isWordPressPlayground = !!appConfig.isPlayground;
 
-    function wikipediaFetchOptions(options) {
+    function wordopediaFetchOptions(options) {
         options = options || {};
-        if (!isWordPressPlayground && wikipediaApiUserAgent) {
+        if (!isWordPressPlayground && wordopediaApiUserAgent) {
             options.headers = options.headers || {};
-            options.headers['Api-User-Agent'] = wikipediaApiUserAgent;
+            options.headers['Api-User-Agent'] = wordopediaApiUserAgent;
         }
 
         return options;
@@ -191,7 +191,7 @@
                 origin: '*'
             });
 
-            fetch('https://en.wikipedia.org/w/api.php?' + params.toString(), wikipediaFetchOptions({ credentials: 'omit' }))
+            fetch('https://en.wikipedia.org/w/api.php?' + params.toString(), wordopediaFetchOptions({ credentials: 'omit' }))
                 .then(function (response) {
                     return response.ok ? response.json() : null;
                 })
@@ -359,7 +359,7 @@
         deleteForm.action = adminPostUrl;
         deleteForm.setAttribute('data-wiki-snippet-delete', '');
         deleteForm.setAttribute('data-wiki-ajax-url', ajaxUrl);
-        appendSnippetHidden(deleteForm, 'action', 'wikipedia_delete_snippet');
+        appendSnippetHidden(deleteForm, 'action', 'wordopedia_delete_snippet');
         appendSnippetHidden(deleteForm, '_wpnonce', snippet && snippet.delete_nonce ? snippet.delete_nonce : '');
         appendSnippetHidden(deleteForm, 'post_id', postId);
         var deleteButton = document.createElement('button');
@@ -818,7 +818,7 @@
                     save.className = 'wiki-inline-form';
                     save.method = 'post';
                     save.action = form.getAttribute('data-save-action') || '';
-                    appendHidden(save, 'action', 'wikipedia_save_article');
+                    appendHidden(save, 'action', 'wordopedia_save_article');
                     appendHidden(save, '_wpnonce', form.getAttribute('data-save-nonce') || '');
                     appendHidden(save, 'page_id', pageId);
                     appendHidden(save, 'title', title);
@@ -874,7 +874,7 @@
                 origin: '*'
             });
 
-            fetch('https://' + requestLanguage + '.wikipedia.org/w/api.php?' + params.toString(), wikipediaFetchOptions({
+            fetch('https://' + requestLanguage + '.wikipedia.org/w/api.php?' + params.toString(), wordopediaFetchOptions({
                 signal: controller.signal,
                 credentials: 'omit'
             }))

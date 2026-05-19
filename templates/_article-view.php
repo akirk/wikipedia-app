@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 
 $article = isset( $article ) && is_array( $article ) ? $article : [];
 $article_html = isset( $article['html'] ) ? $article['html'] : ( $article['content'] ?? '' );
@@ -17,10 +17,10 @@ if ( $is_saved_view ) {
     $saved_label = $saved_date
         ? sprintf(
             /* translators: %s: saved date */
-            __( 'Saved %s', 'wikipedia' ),
+            __( 'Saved %s', 'wordopedia' ),
             $saved_date
         )
-        : __( 'Saved', 'wikipedia' );
+        : __( 'Saved', 'wordopedia' );
 }
 ?>
 <div class="wiki-page-head wiki-article-head">
@@ -35,9 +35,9 @@ if ( $is_saved_view ) {
                     <?php if ( current_user_can( 'edit_posts' ) && ! empty( $article['post_id'] ) ) : ?>
                         <form class="wiki-inline-form wiki-saved-refresh" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
                             <?php wp_nonce_field( App::NONCE_REFETCH_ARTICLE . '_' . $article['post_id'] ); ?>
-                            <input type="hidden" name="action" value="wikipedia_refetch_article">
+                            <input type="hidden" name="action" value="wordopedia_refetch_article">
                             <input type="hidden" name="post_id" value="<?php echo esc_attr( $article['post_id'] ); ?>">
-                            <button class="wiki-btn secondary wiki-mini-btn" type="submit"><?php esc_html_e( 'Refresh', 'wikipedia' ); ?></button>
+                            <button class="wiki-btn secondary wiki-mini-btn" type="submit"><?php esc_html_e( 'Refresh', 'wordopedia' ); ?></button>
                         </form>
                     <?php endif; ?>
                 </span>
@@ -47,15 +47,15 @@ if ( $is_saved_view ) {
 </div>
 
 <?php if ( $is_saved_view ) : ?>
-    <section class="wiki-snippets" aria-labelledby="wiki-snippets-title" data-wiki-snippets data-snippet-count="<?php echo esc_attr( $snippet_count ); ?>" data-count-singular="<?php esc_attr_e( 'snippet', 'wikipedia' ); ?>" data-count-plural="<?php esc_attr_e( 'snippets', 'wikipedia' ); ?>" <?php echo $snippet_count ? '' : 'hidden'; ?>>
+    <section class="wiki-snippets" aria-labelledby="wiki-snippets-title" data-wiki-snippets data-snippet-count="<?php echo esc_attr( $snippet_count ); ?>" data-count-singular="<?php esc_attr_e( 'snippet', 'wordopedia' ); ?>" data-count-plural="<?php esc_attr_e( 'snippets', 'wordopedia' ); ?>" <?php echo $snippet_count ? '' : 'hidden'; ?>>
         <div class="wiki-section-head wiki-snippets-head">
-            <h2 id="wiki-snippets-title"><?php esc_html_e( 'Snippets', 'wikipedia' ); ?></h2>
+            <h2 id="wiki-snippets-title"><?php esc_html_e( 'Snippets', 'wordopedia' ); ?></h2>
             <div class="wiki-meta">
                 <span data-wiki-snippet-count>
                     <?php
                     printf(
                         /* translators: %d: number of saved snippets */
-                        esc_html( _n( '%d snippet', '%d snippets', $snippet_count, 'wikipedia' ) ),
+                        esc_html( _n( '%d snippet', '%d snippets', $snippet_count, 'wordopedia' ) ),
                         $snippet_count
                     );
                     ?>
@@ -80,23 +80,23 @@ if ( $is_saved_view ) {
                             $snippet_updated = ! empty( $snippet['updated_at_display'] ) ? $snippet['updated_at_display'] : '';
                             echo esc_html( $snippet_updated ? sprintf(
                                 /* translators: %s: snippet updated date */
-                                __( 'Updated %s', 'wikipedia' ),
+                                __( 'Updated %s', 'wordopedia' ),
                                 $snippet_updated
-                            ) : __( 'Saved snippet', 'wikipedia' ) );
+                            ) : __( 'Saved snippet', 'wordopedia' ) );
                             ?>
                         </span>
                         <div class="wiki-snippet-buttons">
                             <?php if ( $snippet_can_edit ) : ?>
                                 <?php if ( ! empty( $snippet['edit_url'] ) ) : ?>
-                                    <a class="wiki-btn secondary" href="<?php echo esc_url( $snippet['edit_url'] ); ?>"><?php esc_html_e( 'Edit snippet', 'wikipedia' ); ?></a>
+                                    <a class="wiki-btn secondary" href="<?php echo esc_url( $snippet['edit_url'] ); ?>"><?php esc_html_e( 'Edit snippet', 'wordopedia' ); ?></a>
                                 <?php endif; ?>
                             <?php endif; ?>
                             <?php if ( $snippet_can_delete ) : ?>
                                 <form class="wiki-inline-form wiki-snippet-delete" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-wiki-snippet-delete data-wiki-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
                                     <?php wp_nonce_field( App::NONCE_DELETE_SNIPPET . '_' . $snippet_id ); ?>
-                                    <input type="hidden" name="action" value="wikipedia_delete_snippet">
+                                    <input type="hidden" name="action" value="wordopedia_delete_snippet">
                                     <input type="hidden" name="post_id" value="<?php echo esc_attr( $snippet_id ); ?>">
-                                    <button class="wiki-btn secondary" type="submit"><?php esc_html_e( 'Delete', 'wikipedia' ); ?></button>
+                                    <button class="wiki-btn secondary" type="submit"><?php esc_html_e( 'Delete', 'wordopedia' ); ?></button>
                                 </form>
                             <?php endif; ?>
                         </div>
@@ -108,9 +108,9 @@ if ( $is_saved_view ) {
 <?php endif; ?>
 
 <?php if ( $can_save_snippets ) : ?>
-    <form class="wiki-selection-snippet" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-wiki-snippet-form data-wiki-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-saving-text="<?php esc_attr_e( 'Saving...', 'wikipedia' ); ?>" data-saved-text="<?php esc_attr_e( 'Snippet saved.', 'wikipedia' ); ?>" data-error-text="<?php esc_attr_e( 'Could not save snippet.', 'wikipedia' ); ?>" hidden>
+    <form class="wiki-selection-snippet" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-wiki-snippet-form data-wiki-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-saving-text="<?php esc_attr_e( 'Saving...', 'wordopedia' ); ?>" data-saved-text="<?php esc_attr_e( 'Snippet saved.', 'wordopedia' ); ?>" data-error-text="<?php esc_attr_e( 'Could not save snippet.', 'wordopedia' ); ?>" hidden>
         <?php wp_nonce_field( App::NONCE_SAVE_SNIPPET ); ?>
-        <input type="hidden" name="action" value="wikipedia_save_snippet">
+        <input type="hidden" name="action" value="wordopedia_save_snippet">
         <input type="hidden" name="text" value="" data-wiki-snippet-text>
         <input type="hidden" name="html" value="" data-wiki-snippet-html>
         <?php if ( $is_saved_view && ! empty( $article['post_id'] ) ) : ?>
@@ -121,8 +121,8 @@ if ( $is_saved_view ) {
             <input type="hidden" name="language" value="<?php echo esc_attr( $article['language'] ?? '' ); ?>">
         <?php endif; ?>
         <div class="wiki-selection-snippet-actions">
-            <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save snippet', 'wikipedia' ); ?></button>
-            <button class="wiki-btn secondary wiki-icon-btn" type="button" data-wiki-snippet-cancel aria-label="<?php esc_attr_e( 'Cancel', 'wikipedia' ); ?>">&times;</button>
+            <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save snippet', 'wordopedia' ); ?></button>
+            <button class="wiki-btn secondary wiki-icon-btn" type="button" data-wiki-snippet-cancel aria-label="<?php esc_attr_e( 'Cancel', 'wordopedia' ); ?>">&times;</button>
         </div>
     </form>
 <?php endif; ?>

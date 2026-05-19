@@ -207,12 +207,12 @@ input:focus, select:focus, textarea:focus, button:focus, a:focus { outline: 2px 
     .wiki-topbar { display: block; }
     .wiki-nav { justify-content: flex-start; margin-top: 0.75rem; }
     .wiki-nav-menu-panel { left: 0; right: auto; }
-    .wiki-wikipedia-search, .wiki-compact-search { padding: 0.45rem; }
-    .wiki-wikipedia-search .wiki-search-language, .wiki-wikipedia-search .wiki-search-submit,
+    .wiki-wordopedia-search, .wiki-compact-search { padding: 0.45rem; }
+    .wiki-wordopedia-search .wiki-search-language, .wiki-wordopedia-search .wiki-search-submit,
     .wiki-compact-search .wiki-search-language, .wiki-compact-search .wiki-search-submit { display: none; }
-    .wiki-wikipedia-search .wiki-search-field > span,
+    .wiki-wordopedia-search .wiki-search-field > span,
     .wiki-compact-search .wiki-search-field > span { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-    .wiki-wikipedia-search input[type="search"], .wiki-compact-search input[type="search"] { height: 2.5rem; min-height: 2.5rem; font-size: 1rem; }
+    .wiki-wordopedia-search input[type="search"], .wiki-compact-search input[type="search"] { height: 2.5rem; min-height: 2.5rem; font-size: 1rem; }
 }
 @media (hover: none) {
     .wiki-saved-refresh { opacity: 1; pointer-events: auto; }

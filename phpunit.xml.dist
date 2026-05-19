@@ -6,7 +6,7 @@
          beStrictAboutOutputDuringTests="true"
          failOnWarning="true">
     <testsuites>
-        <testsuite name="wikipedia-app">
+        <testsuite name="wordopedia-app">
             <directory>tests</directory>
         </testsuite>
     </testsuites>

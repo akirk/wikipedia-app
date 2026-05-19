@@ -1,12 +1,12 @@
 <?php
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 use PHPUnit\Framework\TestCase;
 
 class AppHelpersTest extends TestCase {
     protected function tearDown(): void {
-        unset( $GLOBALS['wikipedia_app_test_user_locale'] );
-        unset( $GLOBALS['wikipedia_app_test_home_url'] );
+        unset( $GLOBALS['wordopedia_app_test_user_locale'] );
+        unset( $GLOBALS['wordopedia_app_test_home_url'] );
     }
 
     /** @dataProvider localeLanguages */
@@ -26,13 +26,13 @@ class AppHelpersTest extends TestCase {
     }
 
     public function test_locale_default_language_uses_user_locale(): void {
-        $GLOBALS['wikipedia_app_test_user_locale'] = 'de_DE';
+        $GLOBALS['wordopedia_app_test_user_locale'] = 'de_DE';
 
         $this->assertSame( 'de', App::get_locale_default_language() );
     }
 
     public function test_default_language_uses_english_without_preferences(): void {
-        $GLOBALS['wikipedia_app_test_user_locale'] = 'de_DE';
+        $GLOBALS['wordopedia_app_test_user_locale'] = 'de_DE';
 
         $this->assertSame( 'en', App::get_default_language() );
         $this->assertSame( 'en', App::normalize_language() );
@@ -42,7 +42,7 @@ class AppHelpersTest extends TestCase {
         $result = App::normalize_language( '../en' );
 
         $this->assertInstanceOf( WP_Error::class, $result );
-        $this->assertSame( 'wikipedia_invalid_language', $result->get_error_code() );
+        $this->assertSame( 'wordopedia_invalid_language', $result->get_error_code() );
     }
 
     public function test_language_labels_include_supported_and_unknown_codes(): void {
@@ -96,6 +96,38 @@ class AppHelpersTest extends TestCase {
     public function test_settings_and_list_urls(): void {
         $this->assertSame( 'https://example.test/wordopedia/settings', App::get_settings_url() );
         $this->assertSame( 'https://example.test/wordopedia/list/science', App::get_list_url( 'Science' ) );
+    }
+
+    public function test_ai_assistant_welcome_tip_rules_add_wordopedia_search_tip(): void {
+        $app = $this->newAppWithoutConstructor();
+        $rules = $app->register_ai_assistant_welcome_tip_rules( [
+            'other-plugin/rule' => [
+                'url_component' => 'other',
+                'message'       => 'Existing tip.',
+                'priority'      => 50,
+            ],
+        ], [
+            'path' => '/wordopedia/?query=relativity',
+        ] );
+
+        $this->assertArrayHasKey( 'other-plugin/rule', $rules );
+        $this->assertSame( 'wordopedia', $rules['wordopedia/wordopedia']['url_component'] );
+        $this->assertSame( 30, $rules['wordopedia/wordopedia']['priority'] );
+        $this->assertSame( 'wordopedia', $rules['wordopedia/wordopedia-search']['url_component'] );
+        $this->assertSame( 10, $rules['wordopedia/wordopedia-search']['priority'] );
+        $this->assertStringContainsString( 'search Wikipedia', $rules['wordopedia/wordopedia-search']['message'] );
+    }
+
+    public function test_ai_assistant_welcome_tip_rules_add_article_tip_for_article_route(): void {
+        $app = $this->newAppWithoutConstructor();
+        $rules = $app->register_ai_assistant_welcome_tip_rules( [], [
+            'path' => '/wordopedia/article/de?title=Albert%20Einstein',
+        ] );
+
+        $this->assertArrayHasKey( 'wordopedia/wordopedia-article', $rules );
+        $this->assertArrayNotHasKey( 'wordopedia/wordopedia-search', $rules );
+        $this->assertSame( 'wordopedia', $rules['wordopedia/wordopedia-article']['url_component'] );
+        $this->assertStringContainsString( 'save it to Wordopedia', $rules['wordopedia/wordopedia-article']['message'] );
     }
 
     public function test_article_allowed_html_contains_expected_article_tags(): void {
@@ -166,14 +198,14 @@ class AppHelpersTest extends TestCase {
         );
     }
 
-    public function test_wikipedia_article_href_is_rewritten_to_app_url(): void {
+    public function test_wordopedia_article_href_is_rewritten_to_app_url(): void {
         $this->assertSame(
             'https://example.test/wordopedia/article/en?title=Albert%20Einstein#Life',
             $this->invokePrivateStatic( 'app_url_from_wikipedia_href', [ '/wiki/Albert_Einstein#Life', 'en' ] )
         );
     }
 
-    public function test_cross_language_wikipedia_href_is_rewritten_to_that_language(): void {
+    public function test_cross_language_wordopedia_href_is_rewritten_to_that_language(): void {
         $this->assertSame(
             'https://example.test/wordopedia/article/de?title=Albert%20Einstein',
             $this->invokePrivateStatic( 'app_url_from_wikipedia_href', [ 'https://de.wikipedia.org/wiki/Albert_Einstein', 'en' ] )
@@ -195,9 +227,9 @@ class AppHelpersTest extends TestCase {
         $this->assertStringContainsString( 'Article body', $cleaned );
     }
 
-    public function test_wikipedia_request_headers_identify_normal_wordpress_sites(): void {
-        $headers = $this->invokePrivateStatic( 'wikipedia_request_headers', [] );
-        $user_agent = $this->invokePrivateStatic( 'wikipedia_user_agent', [] );
+    public function test_wordopedia_request_headers_identify_normal_wordpress_sites(): void {
+        $headers = $this->invokePrivateStatic( 'wordopedia_request_headers', [] );
+        $user_agent = $this->invokePrivateStatic( 'wordopedia_user_agent', [] );
 
         $this->assertSame( 'application/json', $headers['Accept'] );
         $this->assertArrayNotHasKey( 'User-Agent', $headers );
@@ -216,27 +248,27 @@ class AppHelpersTest extends TestCase {
         $this->assertTrue( $this->invokePrivateStatic( 'is_wordpress_playground', [] ) );
     }
 
-    public function test_wikipedia_http_error_prefers_api_error_body(): void {
-        $error = $this->invokePrivateStatic( 'wikipedia_http_error', [
+    public function test_wordopedia_http_error_prefers_api_error_body(): void {
+        $error = $this->invokePrivateStatic( 'wordopedia_http_error', [
             400,
             [ 'error' => [ 'info' => '<strong>Bad request</strong>' ] ],
             [],
         ] );
 
         $this->assertInstanceOf( WP_Error::class, $error );
-        $this->assertSame( 'wikipedia_api_error', $error->get_error_code() );
+        $this->assertSame( 'wordopedia_api_error', $error->get_error_code() );
         $this->assertSame( 'Bad request', $error->get_error_message() );
     }
 
-    public function test_wikipedia_http_error_reports_retry_after_for_rate_limits(): void {
-        $error = $this->invokePrivateStatic( 'wikipedia_http_error', [
+    public function test_wordopedia_http_error_reports_retry_after_for_rate_limits(): void {
+        $error = $this->invokePrivateStatic( 'wordopedia_http_error', [
             429,
             [],
             [ 'headers' => [ 'retry-after' => '60' ] ],
         ] );
 
         $this->assertInstanceOf( WP_Error::class, $error );
-        $this->assertSame( 'wikipedia_rate_limited', $error->get_error_code() );
+        $this->assertSame( 'wordopedia_rate_limited', $error->get_error_code() );
         $this->assertStringContainsString( '60', $error->get_error_message() );
     }
 
@@ -245,5 +277,11 @@ class AppHelpersTest extends TestCase {
         $reflection->setAccessible( true );
 
         return $reflection->invokeArgs( null, $args );
+    }
+
+    private function newAppWithoutConstructor(): App {
+        $reflection = new ReflectionClass( App::class );
+
+        return $reflection->newInstanceWithoutConstructor();
     }
 }

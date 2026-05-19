@@ -9,7 +9,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Akirk\\Wikipedia\\": "src/"
+            "Akirk\\Wordopedia\\": "src/"
         }
     },
     "version": "0.1.0",
@@ -19,7 +19,7 @@
         }
     ],
     "config": {
-        "autoloader-suffix": "wikipedia"
+        "autoloader-suffix": "wordopedia"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.6"
