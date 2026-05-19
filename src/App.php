@@ -62,7 +62,7 @@ class App extends BaseApp {
         add_action( 'wp_abilities_api_init', [ $this, 'register_abilities' ] );
         add_filter( 'ai_assistant_ability_domains', [ $this, 'register_ai_assistant_ability_domains' ] );
         add_filter( 'ai_assistant_ability_instructions', [ $this, 'get_ai_assistant_ability_instructions' ], 10, 4 );
-        add_filter( 'ai_assistant_welcome_tip_rules', [ $this, 'register_ai_assistant_welcome_tip_rules' ], 10, 2 );
+        add_filter( 'ai_assistant_welcome_tips', [ $this, 'register_ai_assistant_welcome_tips' ], 10, 2 );
     }
 
     protected function get_url_path(): string {
@@ -756,57 +756,13 @@ class App extends BaseApp {
         return $domains;
     }
 
-    public function register_ai_assistant_welcome_tip_rules( array $rules, array $context ): array {
-        $rules['wordopedia/wordopedia'] = [
-            'url_component' => 'wordopedia',
-            'message'       => __( 'Tip: Ask me to search Wikipedia, open a result in Wordopedia, or save an article to your personal encyclopedia.', 'wordopedia' ),
-            'priority'      => 30,
+    public function register_ai_assistant_welcome_tips( array $tips, array $context ): array {
+        $tips['wordopedia'] = [
+            __( 'Ask me to search Wikipedia, compare article language versions, or save the best result to Wordopedia.', 'wordopedia' ),
+            __( 'Ask me to extract specific facts from an article table into a clean saved snippet, such as a simple list.', 'wordopedia' ),
         ];
 
-        switch ( self::ai_assistant_wordopedia_route( $context ) ) {
-            case 'article':
-                $rules['wordopedia/wordopedia-article'] = [
-                    'url_component' => 'wordopedia',
-                    'message'       => __( 'Tip: Ask me to summarize this article, save it to Wordopedia, compare language versions, or turn a selected passage into a saved snippet.', 'wordopedia' ),
-                    'priority'      => 10,
-                ];
-                break;
-
-            case 'saved':
-            case 'list':
-                $rules['wordopedia/wordopedia-saved'] = [
-                    'url_component' => 'wordopedia',
-                    'message'       => __( 'Tip: Ask me to find saved articles, summarize one with its Wikipedia source, or refetch an article to update your local copy.', 'wordopedia' ),
-                    'priority'      => 10,
-                ];
-                break;
-
-            case 'snippets':
-                $rules['wordopedia/wordopedia-snippets'] = [
-                    'url_component' => 'wordopedia',
-                    'message'       => __( 'Tip: Ask me to search saved snippets, pull parent article context, or create a reusable note from a passage you provide.', 'wordopedia' ),
-                    'priority'      => 10,
-                ];
-                break;
-
-            case 'settings':
-                $rules['wordopedia/wordopedia-settings'] = [
-                    'url_component' => 'wordopedia',
-                    'message'       => __( 'Tip: Ask me which Wikipedia language codes fit your research, then save those preferred article tabs here.', 'wordopedia' ),
-                    'priority'      => 10,
-                ];
-                break;
-
-            default:
-                $rules['wordopedia/wordopedia-search'] = [
-                    'url_component' => 'wordopedia',
-                    'message'       => __( 'Tip: Ask me to search Wikipedia in a specific language, narrow ambiguous topics, or save the best result for later.', 'wordopedia' ),
-                    'priority'      => 10,
-                ];
-                break;
-        }
-
-        return $rules;
+        return $tips;
     }
 
     public function get_ai_assistant_ability_instructions( string $instructions, string $ability_id, $args, $result ): string {
@@ -835,18 +791,6 @@ class App extends BaseApp {
         }
 
         return $instructions;
-    }
-
-    private static function ai_assistant_wordopedia_route( array $context ): string {
-        $path = isset( $context['path'] ) ? (string) $context['path'] : '';
-        $path = (string) parse_url( $path, PHP_URL_PATH );
-        $segments = array_values( array_filter( explode( '/', trim( $path, '/' ) ), 'strlen' ) );
-
-        if ( ! isset( $segments[0] ) || 'wordopedia' !== strtolower( $segments[0] ) ) {
-            return '';
-        }
-
-        return isset( $segments[1] ) ? strtolower( $segments[1] ) : '';
     }
 
     public static function get_app_url( string $path = '' ): string {
