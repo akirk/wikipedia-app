@@ -98,36 +98,34 @@ class AppHelpersTest extends TestCase {
         $this->assertSame( 'https://example.test/wordopedia/list/science', App::get_list_url( 'Science' ) );
     }
 
-    public function test_ai_assistant_welcome_tip_rules_add_wordopedia_search_tip(): void {
+    public function test_ai_assistant_welcome_tips_add_wordopedia_contextual_tips(): void {
         $app = $this->newAppWithoutConstructor();
-        $rules = $app->register_ai_assistant_welcome_tip_rules( [
-            'other-plugin/rule' => [
-                'url_component' => 'other',
-                'message'       => 'Existing tip.',
-                'priority'      => 50,
+        $tips = $app->register_ai_assistant_welcome_tips( [
+            'other' => [
+                'Existing tip.',
             ],
         ], [
             'path' => '/wordopedia/?query=relativity',
         ] );
 
-        $this->assertArrayHasKey( 'other-plugin/rule', $rules );
-        $this->assertSame( 'wordopedia', $rules['wordopedia/wordopedia']['url_component'] );
-        $this->assertSame( 30, $rules['wordopedia/wordopedia']['priority'] );
-        $this->assertSame( 'wordopedia', $rules['wordopedia/wordopedia-search']['url_component'] );
-        $this->assertSame( 10, $rules['wordopedia/wordopedia-search']['priority'] );
-        $this->assertStringContainsString( 'search Wikipedia', $rules['wordopedia/wordopedia-search']['message'] );
+        $this->assertSame( [ 'Existing tip.' ], $tips['other'] );
+        $this->assertArrayHasKey( 'wordopedia', $tips );
+        $this->assertCount( 2, $tips['wordopedia'] );
+        $this->assertStringContainsString( 'search Wikipedia', $tips['wordopedia'][0] );
+        $this->assertStringContainsString( 'extract specific facts', $tips['wordopedia'][1] );
+        $this->assertStringContainsString( 'saved snippet', $tips['wordopedia'][1] );
     }
 
-    public function test_ai_assistant_welcome_tip_rules_add_article_tip_for_article_route(): void {
+    public function test_ai_assistant_welcome_tips_use_route_component_key_for_subroutes(): void {
         $app = $this->newAppWithoutConstructor();
-        $rules = $app->register_ai_assistant_welcome_tip_rules( [], [
+        $tips = $app->register_ai_assistant_welcome_tips( [], [
             'path' => '/wordopedia/article/de?title=Albert%20Einstein',
         ] );
 
-        $this->assertArrayHasKey( 'wordopedia/wordopedia-article', $rules );
-        $this->assertArrayNotHasKey( 'wordopedia/wordopedia-search', $rules );
-        $this->assertSame( 'wordopedia', $rules['wordopedia/wordopedia-article']['url_component'] );
-        $this->assertStringContainsString( 'save it to Wordopedia', $rules['wordopedia/wordopedia-article']['message'] );
+        $this->assertArrayHasKey( 'wordopedia', $tips );
+        $this->assertArrayNotHasKey( 'wordopedia-article', $tips );
+        $this->assertArrayNotHasKey( 'article', $tips );
+        $this->assertStringContainsString( 'save the best result to Wordopedia', $tips['wordopedia'][0] );
     }
 
     public function test_article_allowed_html_contains_expected_article_tags(): void {
