@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 
 global $wp_app_route;
 
@@ -15,7 +15,7 @@ if ( ! $post ) {
 }
 
 $article = $post ? App::format_saved_article( $post, true ) : null;
-$page_title = $article ? $article['title'] : __( 'Saved encyclopedia article', 'wikipedia' );
+$page_title = $article ? $article['title'] : __( 'Saved encyclopedia article', 'wordopedia' );
 $wiki_current_nav = 'saved';
 if ( $article ) {
     $wiki_article_actions = [
@@ -25,23 +25,23 @@ if ( $article ) {
 }
 include __DIR__ . '/_header.php';
 ?>
-<?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>
-    <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
+<?php if ( isset( $_GET['wordopedia_error'] ) ) : ?>
+    <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wordopedia_error'] ) ) ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['saved'] ) ) : ?>
-    <div class="wiki-notice success"><?php esc_html_e( 'Article saved.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice success"><?php esc_html_e( 'Article saved.', 'wordopedia' ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['refetched'] ) ) : ?>
-    <div class="wiki-notice success"><?php esc_html_e( 'Refetched from Wikipedia.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice success"><?php esc_html_e( 'Refetched from Wikipedia.', 'wordopedia' ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['snippet_saved'] ) ) : ?>
-    <div class="wiki-notice success"><?php esc_html_e( 'Snippet saved.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice success"><?php esc_html_e( 'Snippet saved.', 'wordopedia' ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['snippet_updated'] ) ) : ?>
-    <div class="wiki-notice success"><?php esc_html_e( 'Snippet updated.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice success"><?php esc_html_e( 'Snippet updated.', 'wordopedia' ); ?></div>
 <?php endif; ?>
 <?php if ( isset( $_GET['snippet_deleted'] ) ) : ?>
-    <div class="wiki-notice success"><?php esc_html_e( 'Snippet deleted.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice success"><?php esc_html_e( 'Snippet deleted.', 'wordopedia' ); ?></div>
 <?php endif; ?>
 
 <?php
@@ -51,7 +51,7 @@ include __DIR__ . '/_saved-search-form.php';
 ?>
 
 <?php if ( ! $article ) : ?>
-    <div class="wiki-notice error"><?php esc_html_e( 'Saved article not found.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice error"><?php esc_html_e( 'Saved article not found.', 'wordopedia' ); ?></div>
 <?php else : ?>
     <?php
     $is_saved_view = true;

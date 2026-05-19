@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 
 $current_language = isset( $language ) ? (string) $language : App::get_default_language();
 $search_query = isset( $language_tabs_query ) ? (string) $language_tabs_query : '';
@@ -14,7 +14,7 @@ if ( ! in_array( $current_language, $preferred_languages, true ) ) {
     $preferred_languages = App::normalize_language_list( $preferred_languages );
 }
 ?>
-<nav class="wiki-language-tabs wiki-search-language-tabs" id="wiki-search-language-tabs" data-wiki-language-tabs data-wiki-search-language-tabs aria-label="<?php esc_attr_e( 'Search languages', 'wikipedia' ); ?>" <?php echo $tabs_hidden ? 'hidden' : ''; ?>>
+<nav class="wiki-language-tabs wiki-search-language-tabs" id="wiki-search-language-tabs" data-wiki-language-tabs data-wiki-search-language-tabs aria-label="<?php esc_attr_e( 'Search languages', 'wordopedia' ); ?>" <?php echo $tabs_hidden ? 'hidden' : ''; ?>>
     <?php foreach ( $preferred_languages as $code ) : ?>
         <?php
         $url = add_query_arg(
@@ -29,5 +29,5 @@ if ( ! in_array( $current_language, $preferred_languages, true ) ) {
             <?php echo esc_html( App::get_language_label( $code ) ); ?>
         </a>
     <?php endforeach; ?>
-    <a href="<?php echo esc_url( App::get_settings_url() ); ?>"><?php esc_html_e( 'Edit', 'wikipedia' ); ?></a>
+    <a href="<?php echo esc_url( App::get_settings_url() ); ?>"><?php esc_html_e( 'Edit', 'wordopedia' ); ?></a>
 </nav>

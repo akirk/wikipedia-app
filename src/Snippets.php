@@ -1,20 +1,20 @@
 <?php
 
-namespace Akirk\Wikipedia;
+namespace Akirk\Wordopedia;
 
 trait Snippets {
     public function handle_save_snippet(): void {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_die( esc_html__( 'You are not allowed to save Wikipedia snippets.', 'wikipedia' ) );
+            wp_die( esc_html__( 'You are not allowed to save Wikipedia snippets.', 'wordopedia' ) );
         }
 
         check_admin_referer( self::NONCE_SAVE_SNIPPET );
 
-        $result = self::save_wikipedia_snippet( self::snippet_save_input_from_request() );
+        $result = self::save_wordopedia_snippet( self::snippet_save_input_from_request() );
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
-            wp_safe_redirect( add_query_arg( 'wikipedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            wp_safe_redirect( add_query_arg( 'wordopedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
             exit;
         }
 
@@ -24,17 +24,17 @@ trait Snippets {
 
     public function handle_update_snippet(): void {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_die( esc_html__( 'You are not allowed to update Wikipedia snippets.', 'wikipedia' ) );
+            wp_die( esc_html__( 'You are not allowed to update Wikipedia snippets.', 'wordopedia' ) );
         }
 
         $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
         check_admin_referer( self::NONCE_UPDATE_SNIPPET . '_' . $snippet_id );
 
-        $result = self::update_wikipedia_snippet( $snippet_id, self::snippet_update_input_from_request() );
+        $result = self::update_wordopedia_snippet( $snippet_id, self::snippet_update_input_from_request() );
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
-            wp_safe_redirect( add_query_arg( 'wikipedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            wp_safe_redirect( add_query_arg( 'wordopedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
             exit;
         }
 
@@ -44,17 +44,17 @@ trait Snippets {
 
     public function handle_delete_snippet(): void {
         if ( ! current_user_can( 'delete_posts' ) ) {
-            wp_die( esc_html__( 'You are not allowed to delete Wikipedia snippets.', 'wikipedia' ) );
+            wp_die( esc_html__( 'You are not allowed to delete Wikipedia snippets.', 'wordopedia' ) );
         }
 
         $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
         check_admin_referer( self::NONCE_DELETE_SNIPPET . '_' . $snippet_id );
 
-        $result = self::delete_wikipedia_snippet( $snippet_id );
+        $result = self::delete_wordopedia_snippet( $snippet_id );
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
-            wp_safe_redirect( add_query_arg( 'wikipedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            wp_safe_redirect( add_query_arg( 'wordopedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
             exit;
         }
 
@@ -66,47 +66,47 @@ trait Snippets {
     public function ajax_save_snippet(): void {
         if ( ! current_user_can( 'edit_posts' ) ) {
             wp_send_json_error( [
-                'message' => __( 'You are not allowed to save Wikipedia snippets.', 'wikipedia' ),
+                'message' => __( 'You are not allowed to save Wikipedia snippets.', 'wordopedia' ),
             ], 403 );
         }
 
         check_ajax_referer( self::NONCE_SAVE_SNIPPET );
 
-        $result = self::save_wikipedia_snippet( self::snippet_save_input_from_request() );
+        $result = self::save_wordopedia_snippet( self::snippet_save_input_from_request() );
         self::send_snippet_json_response( $result );
     }
 
     public function ajax_update_snippet(): void {
         if ( ! current_user_can( 'edit_posts' ) ) {
             wp_send_json_error( [
-                'message' => __( 'You are not allowed to update Wikipedia snippets.', 'wikipedia' ),
+                'message' => __( 'You are not allowed to update Wikipedia snippets.', 'wordopedia' ),
             ], 403 );
         }
 
         $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
         check_ajax_referer( self::NONCE_UPDATE_SNIPPET . '_' . $snippet_id );
 
-        $result = self::update_wikipedia_snippet( $snippet_id, self::snippet_update_input_from_request() );
+        $result = self::update_wordopedia_snippet( $snippet_id, self::snippet_update_input_from_request() );
         self::send_snippet_json_response( $result );
     }
 
     public function ajax_delete_snippet(): void {
         if ( ! current_user_can( 'delete_posts' ) ) {
             wp_send_json_error( [
-                'message' => __( 'You are not allowed to delete Wikipedia snippets.', 'wikipedia' ),
+                'message' => __( 'You are not allowed to delete Wikipedia snippets.', 'wordopedia' ),
             ], 403 );
         }
 
         $snippet_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
         check_ajax_referer( self::NONCE_DELETE_SNIPPET . '_' . $snippet_id );
 
-        $result = self::delete_wikipedia_snippet( $snippet_id );
+        $result = self::delete_wordopedia_snippet( $snippet_id );
         self::send_snippet_json_response( $result );
     }
 
     public function ability_save_snippet( $input ) {
         $input = is_array( $input ) ? $input : [];
-        $snippet = self::save_wikipedia_snippet( $input );
+        $snippet = self::save_wordopedia_snippet( $input );
 
         if ( is_wp_error( $snippet ) ) {
             return $snippet;
@@ -120,7 +120,7 @@ trait Snippets {
     public function ability_get_snippet( $input ) {
         $input = is_array( $input ) ? $input : [];
         $post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
-        $snippet = self::get_wikipedia_snippet( $post_id );
+        $snippet = self::get_wordopedia_snippet( $post_id );
 
         if ( is_wp_error( $snippet ) ) {
             return $snippet;
@@ -138,7 +138,7 @@ trait Snippets {
         $language = isset( $input['language'] ) ? sanitize_text_field( $input['language'] ) : '';
         $limit = isset( $input['limit'] ) ? absint( $input['limit'] ) : 20;
 
-        $snippets = self::search_wikipedia_snippets( $search, $limit, $parent_post_id, $language );
+        $snippets = self::search_wordopedia_snippets( $search, $limit, $parent_post_id, $language );
         if ( is_wp_error( $snippets ) ) {
             return $snippets;
         }
@@ -148,9 +148,9 @@ trait Snippets {
         ];
     }
 
-    public static function save_wikipedia_snippet( array $input ) {
+    public static function save_wordopedia_snippet( array $input ) {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            return new \WP_Error( 'wikipedia_cannot_save_snippet', __( 'You are not allowed to save Wikipedia snippets.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_save_snippet', __( 'You are not allowed to save Wikipedia snippets.', 'wordopedia' ) );
         }
 
         $snippet_id = isset( $input['snippet_id'] ) ? absint( $input['snippet_id'] ) : 0;
@@ -159,13 +159,13 @@ trait Snippets {
         }
 
         if ( $snippet_id ) {
-            return self::update_wikipedia_snippet( $snippet_id, $input );
+            return self::update_wordopedia_snippet( $snippet_id, $input );
         }
 
         $snippet_content = self::snippet_content_from_input( $input );
         $text = $snippet_content['text'];
         if ( '' === $text ) {
-            return new \WP_Error( 'wikipedia_empty_snippet', __( 'Select or provide snippet text.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_empty_snippet', __( 'Select or provide snippet text.', 'wordopedia' ) );
         }
 
         $parent_post_id = self::resolve_snippet_parent_post_id( $input );
@@ -175,7 +175,7 @@ trait Snippets {
 
         $parent = get_post( $parent_post_id );
         if ( ! $parent instanceof \WP_Post ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
         $snippet_title = self::input_text_value( $input, [ 'snippet_title' ] );
@@ -204,29 +204,29 @@ trait Snippets {
         ] );
     }
 
-    public static function update_wikipedia_snippet( int $snippet_id, array $input ) {
+    public static function update_wordopedia_snippet( int $snippet_id, array $input ) {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            return new \WP_Error( 'wikipedia_cannot_update_snippet', __( 'You are not allowed to update Wikipedia snippets.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_update_snippet', __( 'You are not allowed to update Wikipedia snippets.', 'wordopedia' ) );
         }
 
         $post = get_post( $snippet_id );
         if ( ! $post instanceof \WP_Post || self::POST_TYPE_SNIPPET !== $post->post_type ) {
-            return new \WP_Error( 'wikipedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wordopedia' ) );
         }
 
         if ( ! current_user_can( 'edit_post', $snippet_id ) ) {
-            return new \WP_Error( 'wikipedia_cannot_update_snippet', __( 'You are not allowed to update this Wikipedia snippet.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_update_snippet', __( 'You are not allowed to update this Wikipedia snippet.', 'wordopedia' ) );
         }
 
         $snippet_content = self::snippet_content_from_input( $input );
         $text = $snippet_content['text'];
         if ( '' === $text ) {
-            return new \WP_Error( 'wikipedia_empty_snippet', __( 'Snippet text cannot be empty.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_empty_snippet', __( 'Snippet text cannot be empty.', 'wordopedia' ) );
         }
 
         $parent = get_post( (int) $post->post_parent );
         if ( ! $parent instanceof \WP_Post || self::POST_TYPE !== $parent->post_type ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
         $snippet_title = self::input_text_value( $input, [ 'snippet_title' ] );
@@ -253,18 +253,18 @@ trait Snippets {
         ] );
     }
 
-    public static function delete_wikipedia_snippet( int $snippet_id ) {
+    public static function delete_wordopedia_snippet( int $snippet_id ) {
         if ( ! current_user_can( 'delete_posts' ) ) {
-            return new \WP_Error( 'wikipedia_cannot_delete_snippet', __( 'You are not allowed to delete Wikipedia snippets.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_delete_snippet', __( 'You are not allowed to delete Wikipedia snippets.', 'wordopedia' ) );
         }
 
         $post = get_post( $snippet_id );
         if ( ! $post instanceof \WP_Post || self::POST_TYPE_SNIPPET !== $post->post_type ) {
-            return new \WP_Error( 'wikipedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wordopedia' ) );
         }
 
         if ( ! current_user_can( 'delete_post', $snippet_id ) ) {
-            return new \WP_Error( 'wikipedia_cannot_delete_snippet', __( 'You are not allowed to delete this Wikipedia snippet.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_delete_snippet', __( 'You are not allowed to delete this Wikipedia snippet.', 'wordopedia' ) );
         }
 
         $snippet = self::format_snippet( $post, true, [
@@ -273,16 +273,16 @@ trait Snippets {
         $deleted = wp_trash_post( $snippet_id );
 
         if ( ! $deleted ) {
-            return new \WP_Error( 'wikipedia_snippet_delete_failed', __( 'Snippet could not be deleted.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_snippet_delete_failed', __( 'Snippet could not be deleted.', 'wordopedia' ) );
         }
 
         return $snippet;
     }
 
-    public static function get_wikipedia_snippet( int $snippet_id ) {
+    public static function get_wordopedia_snippet( int $snippet_id ) {
         $post = get_post( $snippet_id );
         if ( ! $post instanceof \WP_Post || self::POST_TYPE_SNIPPET !== $post->post_type ) {
-            return new \WP_Error( 'wikipedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_snippet_not_found', __( 'Wikipedia snippet not found.', 'wordopedia' ) );
         }
 
         return self::format_snippet( $post, true );
@@ -307,7 +307,7 @@ trait Snippets {
         }, $posts );
     }
 
-    public static function search_wikipedia_snippets( string $search = '', int $limit = 20, int $parent_post_id = 0, string $language = '' ) {
+    public static function search_wordopedia_snippets( string $search = '', int $limit = 20, int $parent_post_id = 0, string $language = '' ) {
         $limit = max( 1, min( 50, absint( $limit ) ) );
         $args = [
             'post_type'      => self::POST_TYPE_SNIPPET,
@@ -324,7 +324,7 @@ trait Snippets {
 
         if ( $parent_post_id ) {
             if ( ! self::is_saved_article_post_id( $parent_post_id ) ) {
-                return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+                return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
             }
             $args['post_parent'] = $parent_post_id;
         }
@@ -455,14 +455,14 @@ trait Snippets {
             }
         }
 
-        $saved = self::save_wikipedia_article( $input );
+        $saved = self::save_wordopedia_article( $input );
         if ( is_wp_error( $saved ) ) {
             return $saved;
         }
 
         $parent_post_id = isset( $saved['post_id'] ) ? absint( $saved['post_id'] ) : 0;
         if ( ! $parent_post_id ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
         return self::validate_snippet_parent_post_id( $parent_post_id );
@@ -470,11 +470,11 @@ trait Snippets {
 
     private static function validate_snippet_parent_post_id( int $parent_post_id ) {
         if ( ! self::is_saved_article_post_id( $parent_post_id ) ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
         if ( ! current_user_can( 'edit_post', $parent_post_id ) ) {
-            return new \WP_Error( 'wikipedia_cannot_save_snippet', __( 'You are not allowed to save snippets for this article.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_save_snippet', __( 'You are not allowed to save snippets for this article.', 'wordopedia' ) );
         }
 
         return $parent_post_id;
@@ -565,7 +565,7 @@ trait Snippets {
 
         if ( ! is_array( $result ) ) {
             wp_send_json_error( [
-                'message' => __( 'Snippet could not be saved.', 'wikipedia' ),
+                'message' => __( 'Snippet could not be saved.', 'wordopedia' ),
             ], 400 );
         }
 
@@ -630,10 +630,10 @@ trait Snippets {
         $title = $article_title
             ? sprintf(
                 /* translators: %s: saved article title */
-                __( 'Snippet from %s', 'wikipedia' ),
+                __( 'Snippet from %s', 'wordopedia' ),
                 $article_title
             )
-            : __( 'Wikipedia snippet', 'wikipedia' );
+            : __( 'Wikipedia snippet', 'wordopedia' );
 
         return sanitize_text_field( $title );
     }
@@ -683,7 +683,7 @@ trait Snippets {
             $flags |= LIBXML_HTML_NODEFDTD;
         }
 
-        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wikipedia-app-snippet-root">' . $html . '</div>', $flags );
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wordopedia-app-snippet-root">' . $html . '</div>', $flags );
         libxml_clear_errors();
         libxml_use_internal_errors( $previous );
 
@@ -691,7 +691,7 @@ trait Snippets {
             return '';
         }
 
-        $root = $document->getElementById( 'wikipedia-app-snippet-root' );
+        $root = $document->getElementById( 'wordopedia-app-snippet-root' );
         if ( ! $root ) {
             return '';
         }
@@ -1052,7 +1052,7 @@ trait Snippets {
 
     private static function snippet_schema( bool $include_content = true ): array {
         $properties = [
-            'post_id'               => [ 'type' => 'integer', 'description' => 'Use with wikipedia/get-snippet or wikipedia/save-snippet.' ],
+            'post_id'               => [ 'type' => 'integer', 'description' => 'Use with wordopedia/get-snippet or wordopedia/save-snippet.' ],
             'id'                    => [ 'type' => 'integer' ],
             'parent_post_id'        => [ 'type' => 'integer', 'description' => 'Saved article parent post ID.' ],
             'saved_article_post_id' => [ 'type' => 'integer' ],

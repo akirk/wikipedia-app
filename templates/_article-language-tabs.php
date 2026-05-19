@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 
 $tabs_article = isset( $language_tabs_article ) && is_array( $language_tabs_article )
     ? $language_tabs_article
@@ -89,7 +89,7 @@ usort( $dropdown_languages, function( $a, $b ) {
 
 $show_actions = $dropdown_languages || ( current_user_can( 'edit_posts' ) && ! empty( $tabs_article['page_id'] ) );
 ?>
-<nav class="wiki-language-tabs wiki-article-language-tabs" id="wiki-article-language-tabs" data-wiki-article-language-tabs aria-label="<?php esc_attr_e( 'Article languages', 'wikipedia' ); ?>">
+<nav class="wiki-language-tabs wiki-article-language-tabs" id="wiki-article-language-tabs" data-wiki-article-language-tabs aria-label="<?php esc_attr_e( 'Article languages', 'wordopedia' ); ?>">
     <?php foreach ( $tab_items as $item ) : ?>
         <?php
         $classes = [];
@@ -104,12 +104,12 @@ $show_actions = $dropdown_languages || ( current_user_can( 'edit_posts' ) && ! e
             <?php echo esc_html( $item['language_label'] ); ?>
         </a>
     <?php endforeach; ?>
-    <a href="<?php echo esc_url( App::get_settings_url() ); ?>"><?php esc_html_e( 'Edit', 'wikipedia' ); ?></a>
+    <a href="<?php echo esc_url( App::get_settings_url() ); ?>"><?php esc_html_e( 'Edit', 'wordopedia' ); ?></a>
     <?php if ( $show_actions ) : ?>
         <span class="wiki-language-tab-actions">
             <?php if ( $dropdown_languages ) : ?>
-                <select class="wiki-language-tab-select" aria-label="<?php esc_attr_e( 'Other article languages', 'wikipedia' ); ?>" onchange="if (this.value) window.location.href = this.value;">
-                    <option value="" selected><?php esc_html_e( 'Other languages', 'wikipedia' ); ?></option>
+                <select class="wiki-language-tab-select" aria-label="<?php esc_attr_e( 'Other article languages', 'wordopedia' ); ?>" onchange="if (this.value) window.location.href = this.value;">
+                    <option value="" selected><?php esc_html_e( 'Other languages', 'wordopedia' ); ?></option>
                     <?php foreach ( $dropdown_languages as $translation ) : ?>
                         <option value="<?php echo esc_url( $translation['app_url'] ); ?>">
                             <?php echo esc_html( $translation['language_label'] . ' (' . $translation['language'] . ')' ); ?>
@@ -120,11 +120,11 @@ $show_actions = $dropdown_languages || ( current_user_can( 'edit_posts' ) && ! e
             <?php if ( current_user_can( 'edit_posts' ) && ! empty( $tabs_article['page_id'] ) ) : ?>
                 <form class="wiki-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
                     <?php wp_nonce_field( App::NONCE_SAVE_ARTICLE ); ?>
-                    <input type="hidden" name="action" value="wikipedia_save_article">
+                    <input type="hidden" name="action" value="wordopedia_save_article">
                     <input type="hidden" name="page_id" value="<?php echo esc_attr( $tabs_article['page_id'] ); ?>">
                     <input type="hidden" name="title" value="<?php echo esc_attr( $tabs_article['title'] ?? '' ); ?>">
                     <input type="hidden" name="language" value="<?php echo esc_attr( $current_language ); ?>">
-                    <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save article', 'wikipedia' ); ?></button>
+                    <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save article', 'wordopedia' ); ?></button>
                 </form>
             <?php endif; ?>
         </span>

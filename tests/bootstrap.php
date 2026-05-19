@@ -34,7 +34,7 @@ if ( ! function_exists( 'apply_filters' ) ) {
 
 if ( ! function_exists( 'get_user_locale' ) ) {
     function get_user_locale() {
-        return $GLOBALS['wikipedia_app_test_user_locale'] ?? 'en_US';
+        return $GLOBALS['wordopedia_app_test_user_locale'] ?? 'en_US';
     }
 }
 
@@ -46,7 +46,7 @@ if ( ! function_exists( 'get_locale' ) ) {
 
 if ( ! function_exists( 'home_url' ) ) {
     function home_url( $path = '' ) {
-        $home = $GLOBALS['wikipedia_app_test_home_url'] ?? 'https://example.test';
+        $home = $GLOBALS['wordopedia_app_test_home_url'] ?? 'https://example.test';
         return rtrim( $home, '/' ) . ( '/' === substr( $path, 0, 1 ) ? $path : '/' . $path );
     }
 }

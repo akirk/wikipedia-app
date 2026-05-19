@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 
 // phpcs:disable WordPress.Security.NonceVerification.Recommended -- saved snippet filtering is read-only.
 $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
@@ -22,7 +22,7 @@ if ( '' !== $requested_language ) {
 
 $snippets = [];
 if ( '' === $error_message ) {
-    $snippets = App::search_wikipedia_snippets( $search, 50, 0, $language );
+    $snippets = App::search_wordopedia_snippets( $search, 50, 0, $language );
     if ( is_wp_error( $snippets ) ) {
         $error_message = $snippets->get_error_message();
         $snippets = [];
@@ -36,18 +36,18 @@ if ( '' !== $language && ! isset( $snippet_languages[ $language ] ) ) {
 }
 
 $snippet_count = count( $snippets );
-$page_title = __( 'Saved snippets', 'wikipedia' );
+$page_title = __( 'Saved snippets', 'wordopedia' );
 $wiki_current_nav = 'snippets';
 include __DIR__ . '/_header.php';
 ?>
 <div class="wiki-page-head">
     <div>
-        <h1><?php esc_html_e( 'Saved snippets', 'wikipedia' ); ?></h1>
+        <h1><?php esc_html_e( 'Saved snippets', 'wordopedia' ); ?></h1>
     </div>
 </div>
 
-<?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>
-    <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
+<?php if ( isset( $_GET['wordopedia_error'] ) ) : ?>
+    <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wordopedia_error'] ) ) ); ?></div>
 <?php endif; ?>
 <?php if ( $error_message ) : ?>
     <div class="wiki-notice error"><?php echo esc_html( $error_message ); ?></div>
@@ -55,13 +55,13 @@ include __DIR__ . '/_header.php';
 
 <form class="wiki-search wiki-snippet-search" method="get" action="<?php echo esc_url( App::get_saved_snippets_url() ); ?>">
     <label class="wiki-search-field">
-        <span><?php esc_html_e( 'Search snippets', 'wikipedia' ); ?></span>
-        <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search saved snippets', 'wikipedia' ); ?>" aria-label="<?php esc_attr_e( 'Search saved snippets', 'wikipedia' ); ?>">
+        <span><?php esc_html_e( 'Search snippets', 'wordopedia' ); ?></span>
+        <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" autocomplete="off" placeholder="<?php esc_attr_e( 'Search saved snippets', 'wordopedia' ); ?>" aria-label="<?php esc_attr_e( 'Search saved snippets', 'wordopedia' ); ?>">
     </label>
     <label class="wiki-search-language">
-        <span><?php esc_html_e( 'Language', 'wikipedia' ); ?></span>
-        <select name="language" aria-label="<?php esc_attr_e( 'Filter saved snippets by language', 'wikipedia' ); ?>">
-            <option value=""><?php esc_html_e( 'All languages', 'wikipedia' ); ?></option>
+        <span><?php esc_html_e( 'Language', 'wordopedia' ); ?></span>
+        <select name="language" aria-label="<?php esc_attr_e( 'Filter saved snippets by language', 'wordopedia' ); ?>">
+            <option value=""><?php esc_html_e( 'All languages', 'wordopedia' ); ?></option>
             <?php foreach ( $snippet_languages as $code => $label ) : ?>
                 <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $language, $code ); ?>>
                     <?php echo esc_html( $label . ' (' . $code . ')' ); ?>
@@ -69,9 +69,9 @@ include __DIR__ . '/_header.php';
             <?php endforeach; ?>
         </select>
     </label>
-    <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Search', 'wikipedia' ); ?></button>
+    <button class="wiki-btn wiki-search-submit" type="submit"><?php esc_html_e( 'Search', 'wordopedia' ); ?></button>
     <?php if ( '' !== $search || '' !== $language ) : ?>
-        <a class="wiki-btn secondary" href="<?php echo esc_url( App::get_saved_snippets_url() ); ?>"><?php esc_html_e( 'Clear', 'wikipedia' ); ?></a>
+        <a class="wiki-btn secondary" href="<?php echo esc_url( App::get_saved_snippets_url() ); ?>"><?php esc_html_e( 'Clear', 'wordopedia' ); ?></a>
     <?php endif; ?>
 </form>
 
@@ -81,7 +81,7 @@ include __DIR__ . '/_header.php';
             <?php
             printf(
                 /* translators: %d: number of saved snippets */
-                esc_html( _n( '%d saved snippet', '%d saved snippets', $snippet_count, 'wikipedia' ) ),
+                esc_html( _n( '%d saved snippet', '%d saved snippets', $snippet_count, 'wordopedia' ) ),
                 $snippet_count
             );
             ?>
@@ -91,7 +91,7 @@ include __DIR__ . '/_header.php';
         <?php foreach ( $snippets as $snippet ) : ?>
             <?php
             $snippet_id = isset( $snippet['post_id'] ) ? absint( $snippet['post_id'] ) : 0;
-            $snippet_title = isset( $snippet['title'] ) && '' !== (string) $snippet['title'] ? (string) $snippet['title'] : __( 'Saved snippet', 'wikipedia' );
+            $snippet_title = isset( $snippet['title'] ) && '' !== (string) $snippet['title'] ? (string) $snippet['title'] : __( 'Saved snippet', 'wordopedia' );
             $snippet_text = isset( $snippet['text'] ) ? (string) $snippet['text'] : (string) ( $snippet['summary'] ?? '' );
             $snippet_html = isset( $snippet['html'] ) ? (string) $snippet['html'] : '';
             $parent_title = isset( $snippet['saved_article_title'] ) ? (string) $snippet['saved_article_title'] : '';
@@ -114,7 +114,7 @@ include __DIR__ . '/_header.php';
                 </h2>
                 <div class="wiki-meta">
                     <?php if ( $parent_title && $parent_view_url ) : ?>
-                        <span><?php esc_html_e( 'Article', 'wikipedia' ); ?> <a href="<?php echo esc_url( $parent_view_url ); ?>"><?php echo esc_html( $parent_title ); ?></a></span>
+                        <span><?php esc_html_e( 'Article', 'wordopedia' ); ?> <a href="<?php echo esc_url( $parent_view_url ); ?>"><?php echo esc_html( $parent_title ); ?></a></span>
                     <?php elseif ( $parent_title ) : ?>
                         <span><?php echo esc_html( $parent_title ); ?></span>
                     <?php endif; ?>
@@ -126,17 +126,17 @@ include __DIR__ . '/_header.php';
                             <?php
                             printf(
                                 /* translators: %s: snippet updated date */
-                                esc_html__( 'Updated %s', 'wikipedia' ),
+                                esc_html__( 'Updated %s', 'wordopedia' ),
                                 esc_html( $updated_at )
                             );
                             ?>
                         </span>
                     <?php endif; ?>
                     <?php if ( $source_url ) : ?>
-                        <span><a href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'Source', 'wikipedia' ); ?></a></span>
+                        <span><a href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'Source', 'wordopedia' ); ?></a></span>
                     <?php endif; ?>
                     <?php if ( $can_edit_snippet ) : ?>
-                        <span><a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'wikipedia' ); ?></a></span>
+                        <span><a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'wordopedia' ); ?></a></span>
                     <?php endif; ?>
                 </div>
                 <div class="wiki-snippet-content">
@@ -150,6 +150,6 @@ include __DIR__ . '/_header.php';
         <?php endforeach; ?>
     </ol>
 <?php else : ?>
-    <div class="wiki-notice"><?php esc_html_e( 'No saved snippets found.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice"><?php esc_html_e( 'No saved snippets found.', 'wordopedia' ); ?></div>
 <?php endif; ?>
 <?php include __DIR__ . '/_footer.php'; ?>

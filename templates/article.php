@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-use Akirk\Wikipedia\App;
+use Akirk\Wordopedia\App;
 
 global $wp_app_route;
 
@@ -20,7 +20,7 @@ $article = null;
 $error = null;
 
 if ( $page_id || '' !== $title ) {
-    $article = App::fetch_wikipedia_article( [
+    $article = App::fetch_wordopedia_article( [
         'page_id'  => $page_id,
         'title'    => $title,
         'language' => $language,
@@ -32,7 +32,7 @@ if ( $page_id || '' !== $title ) {
     }
 }
 
-$page_title = $article ? $article['title'] : __( 'Encyclopedia article', 'wikipedia' );
+$page_title = $article ? $article['title'] : __( 'Encyclopedia article', 'wordopedia' );
 $wiki_current_nav = 'search';
 include __DIR__ . '/_header.php';
 ?>
@@ -53,14 +53,14 @@ if ( $article ) {
 
 <section class="wiki-search-results" id="wiki-search-results" data-wiki-quicksearch-results aria-live="polite"></section>
 
-<?php if ( isset( $_GET['wikipedia_error'] ) ) : ?>
-    <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wikipedia_error'] ) ) ); ?></div>
+<?php if ( isset( $_GET['wordopedia_error'] ) ) : ?>
+    <div class="wiki-notice error"><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['wordopedia_error'] ) ) ); ?></div>
 <?php endif; ?>
 
 <?php if ( $error ) : ?>
     <div class="wiki-notice error"><?php echo esc_html( $error->get_error_message() ); ?></div>
 <?php elseif ( ! $article ) : ?>
-    <div class="wiki-notice"><?php esc_html_e( 'Choose an article from search results.', 'wikipedia' ); ?></div>
+    <div class="wiki-notice"><?php esc_html_e( 'Choose an article from search results.', 'wordopedia' ); ?></div>
 <?php else : ?>
     <?php
     $is_saved_view = false;

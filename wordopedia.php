@@ -4,11 +4,11 @@
  * Description: A personal encyclopedia app powered by WpApp.
  * Version: 1.0.0
  * Author: Alex Kirk
- * Text Domain: wikipedia
+ * Text Domain: wordopedia
  * Requires PHP: 7.4
  */
 
-namespace Akirk\Wikipedia;
+namespace Akirk\Wordopedia;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -18,7 +18,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 // Autoloader for plugin classes.
 spl_autoload_register( function( $class ) {
-    $prefix = 'Akirk\Wikipedia\\';
+    $prefix = 'Akirk\Wordopedia\\';
     $len = strlen( $prefix );
     if ( strncmp( $prefix, $class, $len ) !== 0 ) {
         return;

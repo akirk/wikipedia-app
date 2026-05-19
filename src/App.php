@@ -1,6 +1,6 @@
 <?php
 
-namespace Akirk\Wikipedia;
+namespace Akirk\Wordopedia;
 
 use WpApp\BaseApp;
 use WpApp\WpApp;
@@ -8,60 +8,61 @@ use WpApp\WpApp;
 class App extends BaseApp {
     use Snippets;
 
-    const POST_TYPE = 'wikipedia_article';
-    const POST_TYPE_SNIPPET = 'wikipedia_snippet';
-    const TAX_LIST  = 'wikipedia_list';
+    const POST_TYPE = 'wordopedia_article';
+    const POST_TYPE_SNIPPET = 'wordopedia_snippet';
+    const TAX_LIST  = 'wordopedia_list';
 
-    const USER_META_LANGUAGES = '_wikipedia_preferred_languages';
+    const USER_META_LANGUAGES = '_wordopedia_preferred_languages';
 
-    const META_PAGE_ID        = '_wikipedia_page_id';
-    const META_LANGUAGE       = '_wikipedia_language';
-    const META_SOURCE_URL     = '_wikipedia_source_url';
-    const META_THUMBNAIL_URL  = '_wikipedia_thumbnail_url';
-    const META_LAST_REVISION  = '_wikipedia_last_revision';
-    const META_REMOTE_TOUCHED = '_wikipedia_remote_touched';
-    const META_SAVED_AT       = '_wikipedia_saved_at';
-    const META_REFETCHED_AT   = '_wikipedia_refetched_at';
-    const META_SNIPPET_ORIGINAL_TEXT = '_wikipedia_snippet_original_text';
-    const META_SNIPPET_CREATED_AT    = '_wikipedia_snippet_created_at';
-    const META_SNIPPET_UPDATED_AT    = '_wikipedia_snippet_updated_at';
+    const META_PAGE_ID        = '_wordopedia_page_id';
+    const META_LANGUAGE       = '_wordopedia_language';
+    const META_SOURCE_URL     = '_wordopedia_source_url';
+    const META_THUMBNAIL_URL  = '_wordopedia_thumbnail_url';
+    const META_LAST_REVISION  = '_wordopedia_last_revision';
+    const META_REMOTE_TOUCHED = '_wordopedia_remote_touched';
+    const META_SAVED_AT       = '_wordopedia_saved_at';
+    const META_REFETCHED_AT   = '_wordopedia_refetched_at';
+    const META_SNIPPET_ORIGINAL_TEXT = '_wordopedia_snippet_original_text';
+    const META_SNIPPET_CREATED_AT    = '_wordopedia_snippet_created_at';
+    const META_SNIPPET_UPDATED_AT    = '_wordopedia_snippet_updated_at';
 
-    const NONCE_SAVE_ARTICLE    = 'wikipedia_save_article';
-    const NONCE_REFETCH_ARTICLE = 'wikipedia_refetch_article';
-    const NONCE_SAVE_SNIPPET    = 'wikipedia_save_snippet';
-    const NONCE_UPDATE_SNIPPET  = 'wikipedia_update_snippet';
-    const NONCE_DELETE_SNIPPET  = 'wikipedia_delete_snippet';
-    const NONCE_SAVE_SETTINGS   = 'wikipedia_save_settings';
+    const NONCE_SAVE_ARTICLE    = 'wordopedia_save_article';
+    const NONCE_REFETCH_ARTICLE = 'wordopedia_refetch_article';
+    const NONCE_SAVE_SNIPPET    = 'wordopedia_save_snippet';
+    const NONCE_UPDATE_SNIPPET  = 'wordopedia_update_snippet';
+    const NONCE_DELETE_SNIPPET  = 'wordopedia_delete_snippet';
+    const NONCE_SAVE_SETTINGS   = 'wordopedia_save_settings';
 
-    const WIKIPEDIA_CACHE_SEARCH   = 300;
-    const WIKIPEDIA_CACHE_ARTICLE  = 3600;
-    const WIKIPEDIA_CACHE_LANGUAGE = 86400;
+    const WORDOPEDIA_CACHE_SEARCH   = 300;
+    const WORDOPEDIA_CACHE_ARTICLE  = 3600;
+    const WORDOPEDIA_CACHE_LANGUAGE = 86400;
 
     public function __construct() {
         $this->app = new WpApp( $this->get_template_dir(), $this->get_url_path(), [
             'require_login' => true,
-            'app_name'      => __( 'Wordopedia', 'wikipedia' ),
+            'app_name'      => __( 'Wordopedia', 'wordopedia' ),
             'my_apps'       => true,
         ] );
 
         $this->enqueue_assets();
 
         add_action( 'init', [ $this, 'register_post_types' ] );
-        add_action( 'admin_post_wikipedia_save_article', [ $this, 'handle_save_article' ] );
-        add_action( 'admin_post_wikipedia_refetch_article', [ $this, 'handle_refetch_article' ] );
-        add_action( 'admin_post_wikipedia_save_snippet', [ $this, 'handle_save_snippet' ] );
-        add_action( 'admin_post_wikipedia_update_snippet', [ $this, 'handle_update_snippet' ] );
-        add_action( 'admin_post_wikipedia_delete_snippet', [ $this, 'handle_delete_snippet' ] );
-        add_action( 'wp_ajax_wikipedia_save_snippet', [ $this, 'ajax_save_snippet' ] );
-        add_action( 'wp_ajax_wikipedia_update_snippet', [ $this, 'ajax_update_snippet' ] );
-        add_action( 'wp_ajax_wikipedia_delete_snippet', [ $this, 'ajax_delete_snippet' ] );
-        add_action( 'admin_post_wikipedia_save_settings', [ $this, 'handle_save_settings' ] );
+        add_action( 'admin_post_wordopedia_save_article', [ $this, 'handle_save_article' ] );
+        add_action( 'admin_post_wordopedia_refetch_article', [ $this, 'handle_refetch_article' ] );
+        add_action( 'admin_post_wordopedia_save_snippet', [ $this, 'handle_save_snippet' ] );
+        add_action( 'admin_post_wordopedia_update_snippet', [ $this, 'handle_update_snippet' ] );
+        add_action( 'admin_post_wordopedia_delete_snippet', [ $this, 'handle_delete_snippet' ] );
+        add_action( 'wp_ajax_wordopedia_save_snippet', [ $this, 'ajax_save_snippet' ] );
+        add_action( 'wp_ajax_wordopedia_update_snippet', [ $this, 'ajax_update_snippet' ] );
+        add_action( 'wp_ajax_wordopedia_delete_snippet', [ $this, 'ajax_delete_snippet' ] );
+        add_action( 'admin_post_wordopedia_save_settings', [ $this, 'handle_save_settings' ] );
         add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', [ $this, 'register_admin_columns' ] );
         add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', [ $this, 'render_admin_column' ], 10, 2 );
         add_action( 'wp_abilities_api_categories_init', [ $this, 'register_ability_category' ] );
         add_action( 'wp_abilities_api_init', [ $this, 'register_abilities' ] );
         add_filter( 'ai_assistant_ability_domains', [ $this, 'register_ai_assistant_ability_domains' ] );
         add_filter( 'ai_assistant_ability_instructions', [ $this, 'get_ai_assistant_ability_instructions' ], 10, 4 );
+        add_filter( 'ai_assistant_welcome_tip_rules', [ $this, 'register_ai_assistant_welcome_tip_rules' ], 10, 2 );
     }
 
     protected function get_url_path(): string {
@@ -78,14 +79,14 @@ class App extends BaseApp {
         $script_path = dirname( __DIR__ ) . '/assets/js/app.js';
 
         wp_app_enqueue_style(
-            'wikipedia-app',
+            'wordopedia-app',
             plugins_url( 'assets/css/app.css', $plugin_file ),
             [],
             file_exists( $style_path ) ? (string) filemtime( $style_path ) : false
         );
 
         wp_app_enqueue_script(
-            'wikipedia-app',
+            'wordopedia-app',
             plugins_url( 'assets/js/app.js', $plugin_file ),
             [],
             file_exists( $script_path ) ? (string) filemtime( $script_path ) : false,
@@ -93,10 +94,10 @@ class App extends BaseApp {
         );
 
         wp_localize_script(
-            'wikipedia-app',
-            'wikipediaAppConfig',
+            'wordopedia-app',
+            'wordopediaAppConfig',
             [
-                'apiUserAgent' => self::wikipedia_user_agent(),
+                'apiUserAgent' => self::wordopedia_user_agent(),
                 'isPlayground' => self::is_wordpress_playground(),
             ]
         );
@@ -119,24 +120,24 @@ class App extends BaseApp {
     protected function setup_menu(): void {
         $home = self::get_app_url();
 
-        $this->app->add_menu_item( 'search', __( 'Search', 'wikipedia' ), $home );
-        $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wikipedia' ), self::get_saved_articles_url() );
-        $this->app->add_menu_item( 'snippets', __( 'Saved snippets', 'wikipedia' ), self::get_saved_snippets_url() );
-        $this->app->add_menu_item( 'settings', __( 'Settings', 'wikipedia' ), self::get_settings_url() );
+        $this->app->add_menu_item( 'search', __( 'Search', 'wordopedia' ), $home );
+        $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wordopedia' ), self::get_saved_articles_url() );
+        $this->app->add_menu_item( 'snippets', __( 'Saved snippets', 'wordopedia' ), self::get_saved_snippets_url() );
+        $this->app->add_menu_item( 'settings', __( 'Settings', 'wordopedia' ), self::get_settings_url() );
     }
 
     public function register_post_types(): void {
         register_post_type( self::POST_TYPE, [
             'labels' => [
-                'name'               => __( 'Wordopedia Articles', 'wikipedia' ),
-                'singular_name'      => __( 'Wordopedia Article', 'wikipedia' ),
-                'add_new_item'       => __( 'Add New Wordopedia Article', 'wikipedia' ),
-                'edit_item'          => __( 'Edit Wordopedia Article', 'wikipedia' ),
-                'new_item'           => __( 'New Wordopedia Article', 'wikipedia' ),
-                'view_item'          => __( 'View Wordopedia Article', 'wikipedia' ),
-                'search_items'       => __( 'Search Wordopedia Articles', 'wikipedia' ),
-                'not_found'          => __( 'No Wordopedia articles found.', 'wikipedia' ),
-                'not_found_in_trash' => __( 'No Wordopedia articles found in Trash.', 'wikipedia' ),
+                'name'               => __( 'Wordopedia Articles', 'wordopedia' ),
+                'singular_name'      => __( 'Wordopedia Article', 'wordopedia' ),
+                'add_new_item'       => __( 'Add New Wordopedia Article', 'wordopedia' ),
+                'edit_item'          => __( 'Edit Wordopedia Article', 'wordopedia' ),
+                'new_item'           => __( 'New Wordopedia Article', 'wordopedia' ),
+                'view_item'          => __( 'View Wordopedia Article', 'wordopedia' ),
+                'search_items'       => __( 'Search Wordopedia Articles', 'wordopedia' ),
+                'not_found'          => __( 'No Wordopedia articles found.', 'wordopedia' ),
+                'not_found_in_trash' => __( 'No Wordopedia articles found in Trash.', 'wordopedia' ),
             ],
             'public'              => false,
             'show_ui'             => true,
@@ -152,15 +153,15 @@ class App extends BaseApp {
 
         register_post_type( self::POST_TYPE_SNIPPET, [
             'labels' => [
-                'name'               => __( 'Wordopedia Snippets', 'wikipedia' ),
-                'singular_name'      => __( 'Wordopedia Snippet', 'wikipedia' ),
-                'add_new_item'       => __( 'Add New Wordopedia Snippet', 'wikipedia' ),
-                'edit_item'          => __( 'Edit Wordopedia Snippet', 'wikipedia' ),
-                'new_item'           => __( 'New Wordopedia Snippet', 'wikipedia' ),
-                'view_item'          => __( 'View Wordopedia Snippet', 'wikipedia' ),
-                'search_items'       => __( 'Search Wordopedia Snippets', 'wikipedia' ),
-                'not_found'          => __( 'No Wordopedia snippets found.', 'wikipedia' ),
-                'not_found_in_trash' => __( 'No Wordopedia snippets found in Trash.', 'wikipedia' ),
+                'name'               => __( 'Wordopedia Snippets', 'wordopedia' ),
+                'singular_name'      => __( 'Wordopedia Snippet', 'wordopedia' ),
+                'add_new_item'       => __( 'Add New Wordopedia Snippet', 'wordopedia' ),
+                'edit_item'          => __( 'Edit Wordopedia Snippet', 'wordopedia' ),
+                'new_item'           => __( 'New Wordopedia Snippet', 'wordopedia' ),
+                'view_item'          => __( 'View Wordopedia Snippet', 'wordopedia' ),
+                'search_items'       => __( 'Search Wordopedia Snippets', 'wordopedia' ),
+                'not_found'          => __( 'No Wordopedia snippets found.', 'wordopedia' ),
+                'not_found_in_trash' => __( 'No Wordopedia snippets found in Trash.', 'wordopedia' ),
             ],
             'public'              => false,
             'show_ui'             => true,
@@ -176,15 +177,15 @@ class App extends BaseApp {
 
         register_taxonomy( self::TAX_LIST, self::POST_TYPE, [
             'labels' => [
-                'name'          => __( 'Lists', 'wikipedia' ),
-                'singular_name' => __( 'List', 'wikipedia' ),
-                'search_items'  => __( 'Search Lists', 'wikipedia' ),
-                'all_items'     => __( 'All Lists', 'wikipedia' ),
-                'edit_item'     => __( 'Edit List', 'wikipedia' ),
-                'update_item'   => __( 'Update List', 'wikipedia' ),
-                'add_new_item'  => __( 'Add New List', 'wikipedia' ),
-                'new_item_name' => __( 'New List Name', 'wikipedia' ),
-                'menu_name'     => __( 'Lists', 'wikipedia' ),
+                'name'          => __( 'Lists', 'wordopedia' ),
+                'singular_name' => __( 'List', 'wordopedia' ),
+                'search_items'  => __( 'Search Lists', 'wordopedia' ),
+                'all_items'     => __( 'All Lists', 'wordopedia' ),
+                'edit_item'     => __( 'Edit List', 'wordopedia' ),
+                'update_item'   => __( 'Update List', 'wordopedia' ),
+                'add_new_item'  => __( 'Add New List', 'wordopedia' ),
+                'new_item_name' => __( 'New List Name', 'wordopedia' ),
+                'menu_name'     => __( 'Lists', 'wordopedia' ),
             ],
             'public'            => false,
             'show_ui'           => true,
@@ -262,9 +263,9 @@ class App extends BaseApp {
         foreach ( $columns as $key => $label ) {
             $next[ $key ] = $label;
             if ( 'title' === $key ) {
-                $next['wikipedia_language'] = __( 'Language', 'wikipedia' );
-                $next['wikipedia_source']   = __( 'Origin', 'wikipedia' );
-                $next['wikipedia_refetch']  = __( 'Refetched', 'wikipedia' );
+                $next['wordopedia_language'] = __( 'Language', 'wordopedia' );
+                $next['wordopedia_source']   = __( 'Origin', 'wordopedia' );
+                $next['wordopedia_refetch']  = __( 'Refetched', 'wordopedia' );
             }
         }
 
@@ -272,29 +273,29 @@ class App extends BaseApp {
     }
 
     public function render_admin_column( string $column, int $post_id ): void {
-        if ( 'wikipedia_language' === $column ) {
+        if ( 'wordopedia_language' === $column ) {
             $language = (string) get_post_meta( $post_id, self::META_LANGUAGE, true );
             echo esc_html( self::get_language_label( $language ) . ' (' . $language . ')' );
             return;
         }
 
-        if ( 'wikipedia_source' === $column ) {
+        if ( 'wordopedia_source' === $column ) {
             $source_url = (string) get_post_meta( $post_id, self::META_SOURCE_URL, true );
             if ( $source_url ) {
-                printf( '<a href="%s" target="_blank" rel="noreferrer">%s</a>', esc_url( $source_url ), esc_html__( 'Wikipedia', 'wikipedia' ) );
+                printf( '<a href="%s" target="_blank" rel="noreferrer">%s</a>', esc_url( $source_url ), esc_html__( 'Wikipedia', 'wordopedia' ) );
             }
             return;
         }
 
-        if ( 'wikipedia_refetch' === $column ) {
+        if ( 'wordopedia_refetch' === $column ) {
             $refetched = (string) get_post_meta( $post_id, self::META_REFETCHED_AT, true );
-            echo esc_html( $refetched ?: __( 'Never', 'wikipedia' ) );
+            echo esc_html( $refetched ?: __( 'Never', 'wordopedia' ) );
         }
     }
 
     public function handle_save_article(): void {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_die( esc_html__( 'You are not allowed to save Wikipedia articles.', 'wikipedia' ) );
+            wp_die( esc_html__( 'You are not allowed to save Wikipedia articles.', 'wordopedia' ) );
         }
 
         check_admin_referer( self::NONCE_SAVE_ARTICLE );
@@ -306,11 +307,11 @@ class App extends BaseApp {
             'post_status' => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : 'publish',
         ];
 
-        $result = self::save_wikipedia_article( $input );
+        $result = self::save_wordopedia_article( $input );
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
-            wp_safe_redirect( add_query_arg( 'wikipedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            wp_safe_redirect( add_query_arg( 'wordopedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
             exit;
         }
 
@@ -320,7 +321,7 @@ class App extends BaseApp {
 
     public function handle_refetch_article(): void {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_die( esc_html__( 'You are not allowed to refetch Wikipedia articles.', 'wikipedia' ) );
+            wp_die( esc_html__( 'You are not allowed to refetch Wikipedia articles.', 'wordopedia' ) );
         }
 
         $post_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
@@ -330,7 +331,7 @@ class App extends BaseApp {
         $referer = wp_get_referer() ?: self::get_app_url();
 
         if ( is_wp_error( $result ) ) {
-            wp_safe_redirect( add_query_arg( 'wikipedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            wp_safe_redirect( add_query_arg( 'wordopedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
             exit;
         }
 
@@ -340,7 +341,7 @@ class App extends BaseApp {
 
     public function handle_save_settings(): void {
         if ( ! current_user_can( 'read' ) ) {
-            wp_die( esc_html__( 'You are not allowed to update Wikipedia settings.', 'wikipedia' ) );
+            wp_die( esc_html__( 'You are not allowed to update Wikipedia settings.', 'wordopedia' ) );
         }
 
         check_admin_referer( self::NONCE_SAVE_SETTINGS );
@@ -360,9 +361,9 @@ class App extends BaseApp {
             return;
         }
 
-        wp_register_ability_category( 'wikipedia', [
-            'label'       => __( 'Wordopedia', 'wikipedia' ),
-            'description' => __( 'Search, browse, save, refetch, and annotate Wikipedia articles.', 'wikipedia' ),
+        wp_register_ability_category( 'wordopedia', [
+            'label'       => __( 'Wordopedia', 'wordopedia' ),
+            'description' => __( 'Search, browse, save, refetch, and annotate Wikipedia articles.', 'wordopedia' ),
         ] );
     }
 
@@ -371,10 +372,10 @@ class App extends BaseApp {
             return;
         }
 
-        wp_register_ability( 'wikipedia/search-articles', [
-            'label'               => __( 'Search Wikipedia Articles', 'wikipedia' ),
+        wp_register_ability( 'wordopedia/search-wikipedia', [
+            'label'               => __( 'Search Wikipedia Articles', 'wordopedia' ),
             'description'         => 'Searches Wikipedia in a chosen language and returns article matches with app URLs.',
-            'category'            => 'wikipedia',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => [
@@ -401,7 +402,7 @@ class App extends BaseApp {
             },
             'meta'                => [
                 'annotations' => [
-                    'instructions' => 'Use app_url to open search results in Wordopedia. Use page_id and language with wikipedia/get-article or wikipedia/save-article.',
+                    'instructions' => 'Use app_url to open search results in Wordopedia. Use page_id and language with wordopedia/get-article or wordopedia/save-article.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -409,10 +410,10 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/get-article', [
-            'label'               => __( 'Get Wikipedia Article', 'wikipedia' ),
+        wp_register_ability( 'wordopedia/get-article', [
+            'label'               => __( 'Get Wikipedia Article', 'wordopedia' ),
             'description'         => 'Fetches one live Wikipedia article by page ID or exact title, including article HTML, source metadata, and other language links.',
-            'category'            => 'wikipedia',
+            'category'            => 'wordopedia',
             'input_schema'        => self::article_lookup_input_schema(),
             'output_schema'       => self::article_detail_output_schema(),
             'execute_callback'    => [ $this, 'ability_get_article' ],
@@ -429,10 +430,10 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/save-article', [
-            'label'               => __( 'Save Wikipedia Article', 'wikipedia' ),
-            'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wikipedia_article post. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
-            'category'            => 'wikipedia',
+        wp_register_ability( 'wordopedia/save-article', [
+            'label'               => __( 'Save Wikipedia Article', 'wordopedia' ),
+            'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wordopedia_article post. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => array_merge(
@@ -462,10 +463,10 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/list-saved-articles', [
-            'label'               => __( 'List Saved Wikipedia Articles', 'wikipedia' ),
-            'description'         => 'Lists locally saved wikipedia_article posts with source metadata and app URLs.',
-            'category'            => 'wikipedia',
+        wp_register_ability( 'wordopedia/list-saved-articles', [
+            'label'               => __( 'List Saved Wikipedia Articles', 'wordopedia' ),
+            'description'         => 'Lists locally saved wordopedia_article posts with source metadata and app URLs.',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => [
@@ -503,7 +504,7 @@ class App extends BaseApp {
             },
             'meta'                => [
                 'annotations' => [
-                    'instructions' => 'Use returned post_id values with wikipedia/get-saved-article or wikipedia/refetch-saved-article.',
+                    'instructions' => 'Use returned post_id values with wordopedia/get-saved-article or wordopedia/refetch-saved-article.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -511,16 +512,16 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/get-saved-article', [
-            'label'               => __( 'Get Saved Wikipedia Article', 'wikipedia' ),
-            'description'         => 'Returns one locally saved wikipedia_article post by WordPress post ID, including saved content, snippets, and Wikipedia source metadata.',
-            'category'            => 'wikipedia',
+        wp_register_ability( 'wordopedia/get-saved-article', [
+            'label'               => __( 'Get Saved Wikipedia Article', 'wordopedia' ),
+            'description'         => 'Returns one locally saved wordopedia_article post by WordPress post ID, including saved content, snippets, and Wikipedia source metadata.',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => [
                     'post_id' => [
                         'type'        => 'integer',
-                        'description' => 'WordPress post ID from wikipedia/list-saved-articles or wikipedia/save-article.',
+                        'description' => 'WordPress post ID from wordopedia/list-saved-articles or wordopedia/save-article.',
                     ],
                 ],
                 'required'             => [ 'post_id' ],
@@ -541,10 +542,10 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/save-snippet', [
-            'label'               => __( 'Save Wikipedia Snippet', 'wikipedia' ),
-            'description'         => 'Creates or updates a wikipedia_snippet post for selected article text. New snippets are attached to a saved wikipedia_article parent; when needed the parent article is saved first.',
-            'category'            => 'wikipedia',
+        wp_register_ability( 'wordopedia/save-snippet', [
+            'label'               => __( 'Save Wikipedia Snippet', 'wordopedia' ),
+            'description'         => 'Creates or updates a wordopedia_snippet post for selected article text. New snippets are attached to a saved wordopedia_article parent; when needed the parent article is saved first.',
+            'category'            => 'wordopedia',
             'input_schema'        => self::snippet_save_input_schema(),
             'output_schema'       => self::snippet_output_schema( true ),
             'execute_callback'    => [ $this, 'ability_save_snippet' ],
@@ -561,16 +562,16 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/get-snippet', [
-            'label'               => __( 'Get Wikipedia Snippet', 'wikipedia' ),
-            'description'         => 'Returns one saved wikipedia_snippet post, including edited text, parent saved article, source metadata, and app URLs.',
-            'category'            => 'wikipedia',
+        wp_register_ability( 'wordopedia/get-snippet', [
+            'label'               => __( 'Get Wikipedia Snippet', 'wordopedia' ),
+            'description'         => 'Returns one saved wordopedia_snippet post, including edited text, parent saved article, source metadata, and app URLs.',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => [
                     'post_id' => [
                         'type'        => 'integer',
-                        'description' => 'WordPress snippet post ID from wikipedia/search-snippets or wikipedia/save-snippet.',
+                        'description' => 'WordPress snippet post ID from wordopedia/search-snippets or wordopedia/save-snippet.',
                     ],
                 ],
                 'required'             => [ 'post_id' ],
@@ -583,7 +584,7 @@ class App extends BaseApp {
             },
             'meta'                => [
                 'annotations' => [
-                    'instructions' => 'Present the snippet text and link view_url; use parent_post_id with wikipedia/get-saved-article for full article context.',
+                    'instructions' => 'Present the snippet text and link view_url; use parent_post_id with wordopedia/get-saved-article for full article context.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -591,10 +592,10 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/search-snippets', [
-            'label'               => __( 'Search Wikipedia Snippets', 'wikipedia' ),
-            'description'         => 'Searches saved wikipedia_snippet posts, optionally filtered by parent saved article or Wikipedia language.',
-            'category'            => 'wikipedia',
+        wp_register_ability( 'wordopedia/search-snippets', [
+            'label'               => __( 'Search Wikipedia Snippets', 'wordopedia' ),
+            'description'         => 'Searches saved wordopedia_snippet posts, optionally filtered by parent saved article or Wikipedia language.',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => [
@@ -624,7 +625,7 @@ class App extends BaseApp {
             },
             'meta'                => [
                 'annotations' => [
-                    'instructions' => 'Use post_id with wikipedia/get-snippet. Use parent_post_id with wikipedia/get-saved-article for the full saved article and all snippets.',
+                    'instructions' => 'Use post_id with wordopedia/get-snippet. Use parent_post_id with wordopedia/get-saved-article for the full saved article and all snippets.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -632,16 +633,16 @@ class App extends BaseApp {
             ],
         ] );
 
-        wp_register_ability( 'wikipedia/refetch-saved-article', [
-            'label'               => __( 'Refetch Saved Wikipedia Article', 'wikipedia' ),
+        wp_register_ability( 'wordopedia/refetch-saved-article', [
+            'label'               => __( 'Refetch Saved Wikipedia Article', 'wordopedia' ),
             'description'         => 'Refetches a saved Wikipedia article from its stored page ID and language, then updates the local post content and origin metadata.',
-            'category'            => 'wikipedia',
+            'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
                 'properties'           => [
                     'post_id' => [
                         'type'        => 'integer',
-                        'description' => 'WordPress post ID from wikipedia/list-saved-articles.',
+                        'description' => 'WordPress post ID from wordopedia/list-saved-articles.',
                     ],
                 ],
                 'required'             => [ 'post_id' ],
@@ -669,7 +670,7 @@ class App extends BaseApp {
         $language = isset( $input['language'] ) ? sanitize_text_field( $input['language'] ) : self::get_default_language();
         $limit    = isset( $input['limit'] ) ? absint( $input['limit'] ) : 10;
 
-        $articles = self::search_wikipedia_articles( $query, $language, $limit );
+        $articles = self::search_wordopedia_articles( $query, $language, $limit );
         if ( is_wp_error( $articles ) ) {
             return $articles;
         }
@@ -686,7 +687,7 @@ class App extends BaseApp {
 
     public function ability_get_article( $input ) {
         $input = is_array( $input ) ? $input : [];
-        $article = self::fetch_wikipedia_article( $input );
+        $article = self::fetch_wordopedia_article( $input );
 
         if ( is_wp_error( $article ) ) {
             return $article;
@@ -699,7 +700,7 @@ class App extends BaseApp {
 
     public function ability_save_article( $input ) {
         $input = is_array( $input ) ? $input : [];
-        $saved = self::save_wikipedia_article( $input );
+        $saved = self::save_wordopedia_article( $input );
 
         if ( is_wp_error( $saved ) ) {
             return $saved;
@@ -728,7 +729,7 @@ class App extends BaseApp {
         $post = $post_id ? get_post( $post_id ) : null;
 
         if ( ! $post || $post->post_type !== self::POST_TYPE ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
         return [
@@ -751,36 +752,101 @@ class App extends BaseApp {
     }
 
     public function register_ai_assistant_ability_domains( array $domains ): array {
-        $domains['wikipedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article, saved snippets, article annotations, selected text snippets';
+        $domains['wordopedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article, saved snippets, article annotations, selected text snippets';
         return $domains;
     }
 
+    public function register_ai_assistant_welcome_tip_rules( array $rules, array $context ): array {
+        $rules['wordopedia/wordopedia'] = [
+            'url_component' => 'wordopedia',
+            'message'       => __( 'Tip: Ask me to search Wikipedia, open a result in Wordopedia, or save an article to your personal encyclopedia.', 'wordopedia' ),
+            'priority'      => 30,
+        ];
+
+        switch ( self::ai_assistant_wordopedia_route( $context ) ) {
+            case 'article':
+                $rules['wordopedia/wordopedia-article'] = [
+                    'url_component' => 'wordopedia',
+                    'message'       => __( 'Tip: Ask me to summarize this article, save it to Wordopedia, compare language versions, or turn a selected passage into a saved snippet.', 'wordopedia' ),
+                    'priority'      => 10,
+                ];
+                break;
+
+            case 'saved':
+            case 'list':
+                $rules['wordopedia/wordopedia-saved'] = [
+                    'url_component' => 'wordopedia',
+                    'message'       => __( 'Tip: Ask me to find saved articles, summarize one with its Wikipedia source, or refetch an article to update your local copy.', 'wordopedia' ),
+                    'priority'      => 10,
+                ];
+                break;
+
+            case 'snippets':
+                $rules['wordopedia/wordopedia-snippets'] = [
+                    'url_component' => 'wordopedia',
+                    'message'       => __( 'Tip: Ask me to search saved snippets, pull parent article context, or create a reusable note from a passage you provide.', 'wordopedia' ),
+                    'priority'      => 10,
+                ];
+                break;
+
+            case 'settings':
+                $rules['wordopedia/wordopedia-settings'] = [
+                    'url_component' => 'wordopedia',
+                    'message'       => __( 'Tip: Ask me which Wikipedia language codes fit your research, then save those preferred article tabs here.', 'wordopedia' ),
+                    'priority'      => 10,
+                ];
+                break;
+
+            default:
+                $rules['wordopedia/wordopedia-search'] = [
+                    'url_component' => 'wordopedia',
+                    'message'       => __( 'Tip: Ask me to search Wikipedia in a specific language, narrow ambiguous topics, or save the best result for later.', 'wordopedia' ),
+                    'priority'      => 10,
+                ];
+                break;
+        }
+
+        return $rules;
+    }
+
     public function get_ai_assistant_ability_instructions( string $instructions, string $ability_id, $args, $result ): string {
-        if ( strpos( $ability_id, 'wikipedia/' ) !== 0 || empty( $result ) ) {
+        if ( strpos( $ability_id, 'wordopedia/' ) !== 0 || empty( $result ) ) {
             return $instructions;
         }
 
-        if ( 'wikipedia/search-articles' === $ability_id ) {
-            return __( 'Present Wikipedia search results as a concise list with title, language, snippet, and app_url. Ask which result to open or save when ambiguous.', 'wikipedia' );
+        if ( 'wordopedia/search-wikipedia' === $ability_id ) {
+            return __( 'Present Wikipedia search results as a concise list with title, language, snippet, and app_url. Ask which result to open or save when ambiguous.', 'wordopedia' );
         }
 
-        if ( in_array( $ability_id, [ 'wikipedia/save-article', 'wikipedia/refetch-saved-article' ], true ) ) {
-            return __( 'Confirm whether the Wikipedia article was saved or updated, and link it using view_url.', 'wikipedia' );
+        if ( in_array( $ability_id, [ 'wordopedia/save-article', 'wordopedia/refetch-saved-article' ], true ) ) {
+            return __( 'Confirm whether the Wikipedia article was saved or updated, and link it using view_url.', 'wordopedia' );
         }
 
-        if ( in_array( $ability_id, [ 'wikipedia/save-snippet' ], true ) ) {
-            return __( 'Confirm the snippet was saved or updated, quote only the relevant snippet text briefly, and link view_url.', 'wikipedia' );
+        if ( in_array( $ability_id, [ 'wordopedia/save-snippet' ], true ) ) {
+            return __( 'Confirm the snippet was saved or updated, quote only the relevant snippet text briefly, and link view_url.', 'wordopedia' );
         }
 
-        if ( in_array( $ability_id, [ 'wikipedia/get-snippet', 'wikipedia/search-snippets' ], true ) ) {
-            return __( 'Present snippets as concise notes with parent article titles and view_url links. Use parent_post_id for article context when needed.', 'wikipedia' );
+        if ( in_array( $ability_id, [ 'wordopedia/get-snippet', 'wordopedia/search-snippets' ], true ) ) {
+            return __( 'Present snippets as concise notes with parent article titles and view_url links. Use parent_post_id for article context when needed.', 'wordopedia' );
         }
 
-        if ( in_array( $ability_id, [ 'wikipedia/get-article', 'wikipedia/get-saved-article' ], true ) ) {
-            return __( 'Summarize the article briefly, link app_url or view_url when present, and include source_url when citing Wikipedia.', 'wikipedia' );
+        if ( in_array( $ability_id, [ 'wordopedia/get-article', 'wordopedia/get-saved-article' ], true ) ) {
+            return __( 'Summarize the article briefly, link app_url or view_url when present, and include source_url when citing Wikipedia.', 'wordopedia' );
         }
 
         return $instructions;
+    }
+
+    private static function ai_assistant_wordopedia_route( array $context ): string {
+        $path = isset( $context['path'] ) ? (string) $context['path'] : '';
+        $path = (string) parse_url( $path, PHP_URL_PATH );
+        $segments = array_values( array_filter( explode( '/', trim( $path, '/' ) ), 'strlen' ) );
+
+        if ( ! isset( $segments[0] ) || 'wordopedia' !== strtolower( $segments[0] ) ) {
+            return '';
+        }
+
+        return isset( $segments[1] ) ? strtolower( $segments[1] ) : '';
     }
 
     public static function get_app_url( string $path = '' ): string {
@@ -821,10 +887,10 @@ class App extends BaseApp {
         return add_query_arg( $args, self::get_app_url( 'article/' . $language ) );
     }
 
-    public static function search_wikipedia_articles( string $query, string $language = '', int $limit = 10 ) {
+    public static function search_wordopedia_articles( string $query, string $language = '', int $limit = 10 ) {
         $query = trim( wp_strip_all_tags( $query ) );
         if ( '' === $query ) {
-            return new \WP_Error( 'wikipedia_empty_query', __( 'Enter a search phrase.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_empty_query', __( 'Enter a search phrase.', 'wordopedia' ) );
         }
 
         $language = self::normalize_language( $language );
@@ -842,7 +908,7 @@ class App extends BaseApp {
             'srprop'        => 'snippet|wordcount|timestamp|size',
             'formatversion' => 2,
             'utf8'          => 1,
-        ], self::WIKIPEDIA_CACHE_SEARCH );
+        ], self::WORDOPEDIA_CACHE_SEARCH );
 
         if ( is_wp_error( $data ) ) {
             return $data;
@@ -874,7 +940,7 @@ class App extends BaseApp {
         return $results;
     }
 
-    public static function fetch_wikipedia_article( array $input ) {
+    public static function fetch_wordopedia_article( array $input ) {
         $language = isset( $input['language'] ) ? sanitize_text_field( $input['language'] ) : self::get_default_language();
         $language = self::normalize_language( $language );
         if ( is_wp_error( $language ) ) {
@@ -885,7 +951,7 @@ class App extends BaseApp {
         $title   = isset( $input['title'] ) ? trim( wp_strip_all_tags( $input['title'] ) ) : '';
 
         if ( ! $page_id && '' === $title ) {
-            return new \WP_Error( 'wikipedia_missing_article', __( 'Provide a Wikipedia page ID or title.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_missing_article', __( 'Provide a Wikipedia page ID or title.', 'wordopedia' ) );
         }
 
         $force_refresh = ! empty( $input['force_refresh'] );
@@ -927,7 +993,7 @@ class App extends BaseApp {
             $args['titles'] = $title;
         }
 
-        $data = self::request_wikipedia( $language, $args, self::WIKIPEDIA_CACHE_ARTICLE, $force_refresh );
+        $data = self::request_wikipedia( $language, $args, self::WORDOPEDIA_CACHE_ARTICLE, $force_refresh );
         if ( is_wp_error( $data ) ) {
             return $data;
         }
@@ -936,7 +1002,7 @@ class App extends BaseApp {
         $page  = is_array( $pages ) ? reset( $pages ) : null;
 
         if ( ! is_array( $page ) || isset( $page['missing'] ) ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Wikipedia article not found.', 'wordopedia' ) );
         }
 
         $page_id       = isset( $page['pageid'] ) ? absint( $page['pageid'] ) : $page_id;
@@ -977,7 +1043,7 @@ class App extends BaseApp {
             $args['page'] = $title;
         }
 
-        $data = self::request_wikipedia( $language, $args, self::WIKIPEDIA_CACHE_ARTICLE, $force_refresh );
+        $data = self::request_wikipedia( $language, $args, self::WORDOPEDIA_CACHE_ARTICLE, $force_refresh );
         if ( is_wp_error( $data ) ) {
             return $data;
         }
@@ -990,18 +1056,18 @@ class App extends BaseApp {
         }
 
         if ( '' === trim( $html ) ) {
-            return new \WP_Error( 'wikipedia_empty_article_html', __( 'Wikipedia returned an empty article body.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_empty_article_html', __( 'Wikipedia returned an empty article body.', 'wordopedia' ) );
         }
 
         return self::sanitize_article_html( $html, $language );
     }
 
-    public static function save_wikipedia_article( array $input ) {
+    public static function save_wordopedia_article( array $input ) {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            return new \WP_Error( 'wikipedia_cannot_save', __( 'You are not allowed to save Wikipedia articles.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_save', __( 'You are not allowed to save Wikipedia articles.', 'wordopedia' ) );
         }
 
-        $article = self::fetch_wikipedia_article( $input );
+        $article = self::fetch_wordopedia_article( $input );
         if ( is_wp_error( $article ) ) {
             return $article;
         }
@@ -1045,22 +1111,22 @@ class App extends BaseApp {
 
     public static function refetch_saved_article( int $post_id ) {
         if ( ! current_user_can( 'edit_posts' ) ) {
-            return new \WP_Error( 'wikipedia_cannot_refetch', __( 'You are not allowed to refetch Wikipedia articles.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_cannot_refetch', __( 'You are not allowed to refetch Wikipedia articles.', 'wordopedia' ) );
         }
 
         $post = get_post( $post_id );
         if ( ! $post || self::POST_TYPE !== $post->post_type ) {
-            return new \WP_Error( 'wikipedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
         $page_id  = absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) );
         $language = (string) get_post_meta( $post_id, self::META_LANGUAGE, true );
 
         if ( ! $page_id || '' === $language ) {
-            return new \WP_Error( 'wikipedia_missing_origin', __( 'This saved article is missing its Wikipedia origin metadata.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_missing_origin', __( 'This saved article is missing its Wikipedia origin metadata.', 'wordopedia' ) );
         }
 
-        return self::save_wikipedia_article( [
+        return self::save_wordopedia_article( [
             'page_id'       => $page_id,
             'language'      => $language,
             'post_status'   => get_post_status( $post ) ?: 'publish',
@@ -1402,7 +1468,7 @@ class App extends BaseApp {
         $args['origin'] = '*';
         ksort( $args );
 
-        $cache_key = $cache_ttl > 0 ? self::wikipedia_cache_key( $language, $args ) : '';
+        $cache_key = $cache_ttl > 0 ? self::wordopedia_cache_key( $language, $args ) : '';
         if ( $cache_key && ! $force_refresh && function_exists( 'get_transient' ) ) {
             $cached = get_transient( $cache_key );
             if ( is_array( $cached ) ) {
@@ -1415,8 +1481,8 @@ class App extends BaseApp {
         $response = wp_remote_get( $url, [
             'timeout'     => 20,
             'redirection' => 3,
-            'user-agent'  => self::is_wordpress_playground() ? '' : self::wikipedia_user_agent(),
-            'headers'     => self::wikipedia_request_headers(),
+            'user-agent'  => self::is_wordpress_playground() ? '' : self::wordopedia_user_agent(),
+            'headers'     => self::wordopedia_request_headers(),
         ] );
 
         if ( is_wp_error( $response ) ) {
@@ -1428,15 +1494,15 @@ class App extends BaseApp {
         $data        = json_decode( $body, true );
 
         if ( $status_code < 200 || $status_code >= 300 ) {
-            return self::wikipedia_http_error( $status_code, is_array( $data ) ? $data : [], $response );
+            return self::wordopedia_http_error( $status_code, is_array( $data ) ? $data : [], $response );
         }
 
         if ( ! is_array( $data ) ) {
-            return new \WP_Error( 'wikipedia_bad_response', __( 'Wikipedia returned an unreadable response.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_bad_response', __( 'Wikipedia returned an unreadable response.', 'wordopedia' ) );
         }
 
         if ( isset( $data['error']['info'] ) ) {
-            return new \WP_Error( 'wikipedia_api_error', sanitize_text_field( $data['error']['info'] ) );
+            return new \WP_Error( 'wordopedia_api_error', sanitize_text_field( $data['error']['info'] ) );
         }
 
         if ( $cache_key && function_exists( 'set_transient' ) ) {
@@ -1446,15 +1512,15 @@ class App extends BaseApp {
         return $data;
     }
 
-    private static function wikipedia_request_headers(): array {
+    private static function wordopedia_request_headers(): array {
         $headers = [
             'Accept' => 'application/json',
         ];
 
-        return apply_filters( 'wikipedia_app_wikipedia_request_headers', $headers );
+        return apply_filters( 'wordopedia_app_wikipedia_request_headers', $headers );
     }
 
-    private static function wikipedia_user_agent(): string {
+    private static function wordopedia_user_agent(): string {
         return 'Wordopedia/1.0 (' . home_url( '/' ) . '; uses Wikipedia API)';
     }
 
@@ -1462,38 +1528,38 @@ class App extends BaseApp {
         return defined( 'PLAYGROUND_AUTO_LOGIN_AS_USER' );
     }
 
-    private static function wikipedia_cache_key( string $language, array $args ): string {
-        return 'wikipedia_app_api_' . md5( $language . ':' . wp_json_encode( $args ) );
+    private static function wordopedia_cache_key( string $language, array $args ): string {
+        return 'wordopedia_app_api_' . md5( $language . ':' . wp_json_encode( $args ) );
     }
 
-    private static function wikipedia_http_error( int $status_code, array $data, $response ) {
+    private static function wordopedia_http_error( int $status_code, array $data, $response ) {
         if ( isset( $data['error']['info'] ) ) {
-            return new \WP_Error( 'wikipedia_api_error', sanitize_text_field( $data['error']['info'] ) );
+            return new \WP_Error( 'wordopedia_api_error', sanitize_text_field( $data['error']['info'] ) );
         }
 
-        $retry_after = self::wikipedia_retry_after( $response );
+        $retry_after = self::wordopedia_retry_after( $response );
         if ( $retry_after && in_array( $status_code, [ 429, 503 ], true ) ) {
             return new \WP_Error(
-                'wikipedia_rate_limited',
+                'wordopedia_rate_limited',
                 sprintf(
                     /* translators: %s: Retry-After header value. */
-                    __( 'Wikipedia asked this app to slow down. Try again after %s.', 'wikipedia' ),
+                    __( 'Wikipedia asked this app to slow down. Try again after %s.', 'wordopedia' ),
                     $retry_after
                 )
             );
         }
 
         return new \WP_Error(
-            'wikipedia_http_error',
+            'wordopedia_http_error',
             sprintf(
                 /* translators: %d: HTTP response status code. */
-                __( 'Wikipedia returned HTTP %d.', 'wikipedia' ),
+                __( 'Wikipedia returned HTTP %d.', 'wordopedia' ),
                 $status_code
             )
         );
     }
 
-    private static function wikipedia_retry_after( $response ): string {
+    private static function wordopedia_retry_after( $response ): string {
         if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
             return '';
         }
@@ -1509,7 +1575,7 @@ class App extends BaseApp {
         }
 
         if ( ! preg_match( '/^[a-z][a-z0-9-]{1,15}$/', $language ) ) {
-            return new \WP_Error( 'wikipedia_invalid_language', __( 'Use a valid Wikipedia language subdomain, such as en, de, fr, or simple.', 'wikipedia' ) );
+            return new \WP_Error( 'wordopedia_invalid_language', __( 'Use a valid Wikipedia language subdomain, such as en, de, fr, or simple.', 'wordopedia' ) );
         }
 
         return $language;
@@ -1555,15 +1621,15 @@ class App extends BaseApp {
     }
 
     public static function get_supported_languages(): array {
-        $fallback = [ 'en' => __( 'English', 'wikipedia' ) ];
+        $fallback = [ 'en' => __( 'English', 'wordopedia' ) ];
         if ( ! function_exists( 'wp_remote_get' ) ) {
-            return apply_filters( 'wikipedia_app_languages', $fallback );
+            return apply_filters( 'wordopedia_app_languages', $fallback );
         }
 
-        $cache_key = 'wikipedia_app_language_versions';
+        $cache_key = 'wordopedia_app_language_versions';
         $languages = function_exists( 'get_transient' ) ? get_transient( $cache_key ) : false;
         if ( is_array( $languages ) && $languages ) {
-            return apply_filters( 'wikipedia_app_languages', $languages );
+            return apply_filters( 'wordopedia_app_languages', $languages );
         }
 
         $data = self::request_wikipedia( 'en', [
@@ -1576,7 +1642,7 @@ class App extends BaseApp {
         ] );
 
         if ( is_wp_error( $data ) ) {
-            return apply_filters( 'wikipedia_app_languages', $fallback );
+            return apply_filters( 'wordopedia_app_languages', $fallback );
         }
 
         $languages = [];
@@ -1591,7 +1657,7 @@ class App extends BaseApp {
                         continue;
                     }
 
-                    $languages['simple'] = __( 'Simple English', 'wikipedia' );
+                    $languages['simple'] = __( 'Simple English', 'wordopedia' );
                 }
                 continue;
             }
@@ -1620,10 +1686,10 @@ class App extends BaseApp {
         ksort( $languages, SORT_NATURAL | SORT_FLAG_CASE );
         $languages = $languages ?: $fallback;
         if ( function_exists( 'set_transient' ) ) {
-            set_transient( $cache_key, $languages, self::WIKIPEDIA_CACHE_LANGUAGE );
+            set_transient( $cache_key, $languages, self::WORDOPEDIA_CACHE_LANGUAGE );
         }
 
-        return apply_filters( 'wikipedia_app_languages', $languages );
+        return apply_filters( 'wordopedia_app_languages', $languages );
     }
 
     public static function normalize_language_list( array $languages ): array {
@@ -1736,7 +1802,7 @@ class App extends BaseApp {
             $flags |= LIBXML_HTML_NODEFDTD;
         }
 
-        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wikipedia-app-article-root">' . $html . '</div>', $flags );
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wordopedia-app-article-root">' . $html . '</div>', $flags );
         libxml_clear_errors();
         libxml_use_internal_errors( $previous );
 
@@ -1757,7 +1823,7 @@ class App extends BaseApp {
             }
         }
 
-        $root = $document->getElementById( 'wikipedia-app-article-root' );
+        $root = $document->getElementById( 'wordopedia-app-article-root' );
         if ( ! $root ) {
             return $html;
         }
@@ -1785,7 +1851,7 @@ class App extends BaseApp {
             $flags |= LIBXML_HTML_NODEFDTD;
         }
 
-        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wikipedia-app-article-root">' . $html . '</div>', $flags );
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wordopedia-app-article-root">' . $html . '</div>', $flags );
         libxml_clear_errors();
         libxml_use_internal_errors( $previous );
 
@@ -1807,7 +1873,7 @@ class App extends BaseApp {
             }
         }
 
-        $root = $document->getElementById( 'wikipedia-app-article-root' );
+        $root = $document->getElementById( 'wordopedia-app-article-root' );
         if ( ! $root ) {
             return $html;
         }
@@ -1977,7 +2043,7 @@ class App extends BaseApp {
             'properties'           => [
                 'page_id'  => [
                     'type'        => 'integer',
-                    'description' => 'Wikipedia page ID from wikipedia/search-articles.',
+                    'description' => 'Wikipedia page ID from wordopedia/search-wikipedia.',
                 ],
                 'title'    => [
                     'type'        => 'string',
@@ -2004,7 +2070,7 @@ class App extends BaseApp {
                     'items' => [
                         'type'       => 'object',
                         'properties' => [
-                            'page_id'        => [ 'type' => 'integer', 'description' => 'Use with wikipedia/get-article or wikipedia/save-article.' ],
+                            'page_id'        => [ 'type' => 'integer', 'description' => 'Use with wordopedia/get-article or wordopedia/save-article.' ],
                             'title'          => [ 'type' => 'string' ],
                             'snippet'        => [ 'type' => 'string' ],
                             'word_count'     => [ 'type' => 'integer' ],
@@ -2028,7 +2094,7 @@ class App extends BaseApp {
                 'article' => [
                     'type'       => 'object',
                     'properties' => [
-                        'page_id'             => [ 'type' => 'integer', 'description' => 'Use with wikipedia/save-article.' ],
+                        'page_id'             => [ 'type' => 'integer', 'description' => 'Use with wordopedia/save-article.' ],
                         'title'               => [ 'type' => 'string' ],
                         'extract'             => [ 'type' => 'string' ],
                         'summary'             => [ 'type' => 'string' ],
@@ -2071,7 +2137,7 @@ class App extends BaseApp {
 
     private static function saved_article_schema( bool $include_content = false ): array {
         $properties = [
-            'post_id'          => [ 'type' => 'integer', 'description' => 'Use with wikipedia/get-saved-article or wikipedia/refetch-saved-article.' ],
+            'post_id'          => [ 'type' => 'integer', 'description' => 'Use with wordopedia/get-saved-article or wordopedia/refetch-saved-article.' ],
             'id'               => [ 'type' => 'integer' ],
             'title'            => [ 'type' => 'string' ],
             'status'           => [ 'type' => 'string' ],
