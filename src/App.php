@@ -40,7 +40,7 @@ class App extends BaseApp {
     public function __construct() {
         $this->app = new WpApp( $this->get_template_dir(), $this->get_url_path(), [
             'require_login' => true,
-            'app_name'      => __( 'Wordopedia', 'wordopedia' ),
+            'app_name'      => 'Wordopedia',
             'my_apps'       => true,
         ] );
 
@@ -118,12 +118,21 @@ class App extends BaseApp {
     }
 
     protected function setup_menu(): void {
-        $home = self::get_app_url();
+        $register_menu = function(): void {
+            $home = self::get_app_url();
 
-        $this->app->add_menu_item( 'search', __( 'Search', 'wordopedia' ), $home );
-        $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wordopedia' ), self::get_saved_articles_url() );
-        $this->app->add_menu_item( 'snippets', __( 'Saved snippets', 'wordopedia' ), self::get_saved_snippets_url() );
-        $this->app->add_menu_item( 'settings', __( 'Settings', 'wordopedia' ), self::get_settings_url() );
+            $this->app->add_menu_item( 'search', __( 'Search', 'wordopedia' ), $home );
+            $this->app->add_menu_item( 'saved', __( 'Saved articles', 'wordopedia' ), self::get_saved_articles_url() );
+            $this->app->add_menu_item( 'snippets', __( 'Saved snippets', 'wordopedia' ), self::get_saved_snippets_url() );
+            $this->app->add_menu_item( 'settings', __( 'Settings', 'wordopedia' ), self::get_settings_url() );
+        };
+
+        if ( did_action( 'init' ) ) {
+            $register_menu();
+            return;
+        }
+
+        add_action( 'init', $register_menu );
     }
 
     public function register_post_types(): void {
