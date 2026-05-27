@@ -14,7 +14,7 @@ The app also supports passage-level notes. Users can highlight useful text while
 
 Under the hood, Wordopedia stores data with native WordPress post, post meta, taxonomy, and user meta APIs. When the WordPress Abilities API is available, it also exposes assistant-friendly operations for searching, fetching, saving, listing, refetching, and annotating Wikipedia articles.
 
-All app routes require a logged-in WordPress user. Reading uses normal `read` access. Saving or refetching articles and saving snippets requires `edit_posts`; deleting snippets requires `delete_posts`.
+All app routes require a logged-in WordPress user. Wordopedia is a shared library: reads require `read`; saves require `edit_posts`; updates and refetches also require `edit_post`; snippet deletes require `delete_post`.
 
 ## Data model
 

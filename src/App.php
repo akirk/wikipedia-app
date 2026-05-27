@@ -313,7 +313,6 @@ class App extends BaseApp {
             'page_id'     => isset( $_POST['page_id'] ) ? absint( wp_unslash( $_POST['page_id'] ) ) : 0,
             'title'       => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
             'language'    => isset( $_POST['language'] ) ? sanitize_text_field( wp_unslash( $_POST['language'] ) ) : self::get_default_language(),
-            'post_status' => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : 'publish',
         ];
 
         $result = self::save_wordopedia_article( $input );
@@ -383,7 +382,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/search-wikipedia', [
             'label'               => __( 'Search Wikipedia Articles', 'wordopedia' ),
-            'description'         => 'Searches Wikipedia in a chosen language and returns article matches with app URLs.',
+            'description'         => 'Search Wikipedia articles.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -410,6 +409,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use app_url to open search results in Wordopedia. Use page_id and language with wordopedia/get-article or wordopedia/save-article.',
                     'readonly'     => true,
@@ -421,7 +421,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/get-article', [
             'label'               => __( 'Get Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Fetches one live Wikipedia article by page ID or exact title, including article HTML, source metadata, and other language links.',
+            'description'         => 'Fetch a Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => self::article_lookup_input_schema(),
             'output_schema'       => self::article_detail_output_schema(),
@@ -430,6 +430,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'If both page_id and title are present, page_id is authoritative. Present app_url for reading inside the app.',
                     'readonly'     => true,
@@ -441,28 +442,16 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/save-article', [
             'label'               => __( 'Save Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wordopedia_article post. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
+            'description'         => 'Save or update a Wikipedia article.',
             'category'            => 'wordopedia',
-            'input_schema'        => [
-                'type'                 => 'object',
-                'properties'           => array_merge(
-                    self::article_lookup_input_schema()['properties'],
-                    [
-                        'post_status' => [
-                            'type'        => 'string',
-                            'enum'        => [ 'publish', 'draft', 'private' ],
-                            'description' => 'WordPress status for the saved article. Defaults to publish.',
-                        ],
-                    ]
-                ),
-                'additionalProperties' => false,
-            ],
+            'input_schema'        => self::article_lookup_input_schema(),
             'output_schema'       => self::saved_article_output_schema(),
             'execute_callback'    => [ $this, 'ability_save_article' ],
             'permission_callback' => function() {
                 return current_user_can( 'edit_posts' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'After saving, present whether the article was created or updated and link view_url.',
                     'readonly'     => false,
@@ -474,7 +463,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/list-saved-articles', [
             'label'               => __( 'List Saved Wikipedia Articles', 'wordopedia' ),
-            'description'         => 'Lists locally saved wordopedia_article posts with source metadata and app URLs.',
+            'description'         => 'List saved Wikipedia articles.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -512,6 +501,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use returned post_id values with wordopedia/get-saved-article or wordopedia/refetch-saved-article.',
                     'readonly'     => true,
@@ -523,7 +513,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/get-saved-article', [
             'label'               => __( 'Get Saved Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Returns one locally saved wordopedia_article post by WordPress post ID, including saved content, snippets, and Wikipedia source metadata.',
+            'description'         => 'Get a saved Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -542,6 +532,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Present the saved article title linked to view_url and include source_url when citing Wikipedia.',
                     'readonly'     => true,
@@ -553,7 +544,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/save-snippet', [
             'label'               => __( 'Save Wikipedia Snippet', 'wordopedia' ),
-            'description'         => 'Creates or updates a wordopedia_snippet post for selected article text. New snippets are attached to a saved wordopedia_article parent; when needed the parent article is saved first.',
+            'description'         => 'Save or update a Wikipedia snippet.',
             'category'            => 'wordopedia',
             'input_schema'        => self::snippet_save_input_schema(),
             'output_schema'       => self::snippet_output_schema( true ),
@@ -562,6 +553,7 @@ class App extends BaseApp {
                 return current_user_can( 'edit_posts' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use parent_post_id when the saved article already exists. Otherwise provide page_id or title with language so the article can be saved before the snippet is attached.',
                     'readonly'     => false,
@@ -573,7 +565,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/get-snippet', [
             'label'               => __( 'Get Wikipedia Snippet', 'wordopedia' ),
-            'description'         => 'Returns one saved wordopedia_snippet post, including edited text, parent saved article, source metadata, and app URLs.',
+            'description'         => 'Get a saved Wikipedia snippet.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -592,6 +584,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Present the snippet text and link view_url; use parent_post_id with wordopedia/get-saved-article for full article context.',
                     'readonly'     => true,
@@ -603,7 +596,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/search-snippets', [
             'label'               => __( 'Search Wikipedia Snippets', 'wordopedia' ),
-            'description'         => 'Searches saved wordopedia_snippet posts, optionally filtered by parent saved article or Wikipedia language.',
+            'description'         => 'Search saved Wikipedia snippets.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -633,6 +626,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use post_id with wordopedia/get-snippet. Use parent_post_id with wordopedia/get-saved-article for the full saved article and all snippets.',
                     'readonly'     => true,
@@ -644,7 +638,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/refetch-saved-article', [
             'label'               => __( 'Refetch Saved Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Refetches a saved Wikipedia article from its stored page ID and language, then updates the local post content and origin metadata.',
+            'description'         => 'Refetch a saved Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -663,6 +657,7 @@ class App extends BaseApp {
                 return current_user_can( 'edit_posts' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Report whether the saved article was updated and link view_url.',
                     'readonly'     => false,
@@ -1025,18 +1020,17 @@ class App extends BaseApp {
             return $article;
         }
 
-        $post_status = isset( $input['post_status'] ) ? sanitize_key( $input['post_status'] ) : 'publish';
-        if ( ! in_array( $post_status, [ 'publish', 'draft', 'private' ], true ) ) {
-            $post_status = 'publish';
+        $existing_id = self::find_saved_article_id( $article['page_id'], $article['language'] );
+        if ( $existing_id && ! current_user_can( 'edit_post', $existing_id ) ) {
+            return new \WP_Error( 'wordopedia_cannot_update', __( 'You are not allowed to update this Wikipedia article.', 'wordopedia' ) );
         }
 
-        $existing_id = self::find_saved_article_id( $article['page_id'], $article['language'] );
         $post_data = [
             'post_type'    => self::POST_TYPE,
             'post_title'   => $article['title'],
             'post_content' => $article['html'],
             'post_excerpt' => $article['summary'],
-            'post_status'  => $post_status,
+            'post_status'  => 'publish',
             'post_name'    => self::build_article_slug( $article['language'], $article['title'], $article['page_id'] ),
         ];
 
@@ -1072,6 +1066,10 @@ class App extends BaseApp {
             return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return new \WP_Error( 'wordopedia_cannot_refetch', __( 'You are not allowed to refetch this Wikipedia article.', 'wordopedia' ) );
+        }
+
         $page_id  = absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) );
         $language = (string) get_post_meta( $post_id, self::META_LANGUAGE, true );
 
@@ -1082,7 +1080,6 @@ class App extends BaseApp {
         return self::save_wordopedia_article( [
             'page_id'       => $page_id,
             'language'      => $language,
-            'post_status'   => get_post_status( $post ) ?: 'publish',
             'force_refresh' => true,
         ] );
     }
