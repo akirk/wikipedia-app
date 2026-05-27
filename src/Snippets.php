@@ -181,6 +181,9 @@ trait Snippets {
         $snippet_title = self::input_text_value( $input, [ 'snippet_title' ] );
         $snippet_title = '' !== trim( $snippet_title ) ? sanitize_text_field( $snippet_title ) : self::build_snippet_title( $parent, $text );
         $post_status = self::snippet_post_status( $input, $parent );
+        if ( ! self::current_user_can_use_wordopedia_post_status( $post_status ) ) {
+            return new \WP_Error( 'wordopedia_cannot_publish_snippet', __( 'You are not allowed to publish Wordopedia snippets.', 'wordopedia' ) );
+        }
 
         $post_id = wp_insert_post( [
             'post_type'    => self::POST_TYPE_SNIPPET,
@@ -231,7 +234,11 @@ trait Snippets {
 
         $snippet_title = self::input_text_value( $input, [ 'snippet_title' ] );
         $snippet_title = '' !== trim( $snippet_title ) ? sanitize_text_field( $snippet_title ) : self::build_snippet_title( $parent, $text );
-        $post_status = self::snippet_post_status( $input, $parent, get_post_status( $post ) ?: 'publish' );
+        $current_status = get_post_status( $post ) ?: 'publish';
+        $post_status = self::snippet_post_status( $input, $parent, $current_status );
+        if ( ! self::current_user_can_use_wordopedia_post_status( $post_status, $current_status ) ) {
+            return new \WP_Error( 'wordopedia_cannot_publish_snippet', __( 'You are not allowed to publish Wordopedia snippets.', 'wordopedia' ) );
+        }
 
         $updated = wp_update_post( [
             'ID'           => $snippet_id,
@@ -507,16 +514,10 @@ trait Snippets {
     }
 
     private static function snippet_post_status( array $input, \WP_Post $parent, string $fallback = '' ): string {
-        $post_status = isset( $input['post_status'] ) ? sanitize_key( $input['post_status'] ) : '';
-        if ( ! in_array( $post_status, [ 'publish', 'draft', 'private' ], true ) ) {
-            $post_status = $fallback ?: ( get_post_status( $parent ) ?: 'publish' );
-        }
+        $post_status = isset( $input['post_status'] ) && is_scalar( $input['post_status'] ) ? (string) $input['post_status'] : '';
+        $fallback = $fallback ?: ( get_post_status( $parent ) ?: self::default_wordopedia_post_status() );
 
-        if ( ! in_array( $post_status, [ 'publish', 'draft', 'private' ], true ) ) {
-            $post_status = 'publish';
-        }
-
-        return $post_status;
+        return self::normalize_wordopedia_post_status( $post_status, $fallback );
     }
 
     private static function get_saved_article_view_url( \WP_Post $post ): string {
@@ -1021,7 +1022,7 @@ trait Snippets {
                 'post_status'     => [
                     'type'        => 'string',
                     'enum'        => [ 'publish', 'draft', 'private' ],
-                    'description' => 'WordPress status for the snippet. Defaults to the parent saved article status.',
+                    'description' => 'WordPress status for the snippet. Defaults to the parent saved article status. Publish and private require publish_posts.',
                 ],
             ],
             'required'             => [ 'text' ],

@@ -410,6 +410,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use app_url to open search results in Wordopedia. Use page_id and language with wordopedia/get-article or wordopedia/save-article.',
                     'readonly'     => true,
@@ -430,6 +431,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'If both page_id and title are present, page_id is authoritative. Present app_url for reading inside the app.',
                     'readonly'     => true,
@@ -451,7 +453,7 @@ class App extends BaseApp {
                         'post_status' => [
                             'type'        => 'string',
                             'enum'        => [ 'publish', 'draft', 'private' ],
-                            'description' => 'WordPress status for the saved article. Defaults to publish.',
+                            'description' => 'WordPress status for the saved article. Defaults to publish for users who can publish posts, otherwise draft. Publish and private require publish_posts.',
                         ],
                     ]
                 ),
@@ -463,6 +465,7 @@ class App extends BaseApp {
                 return current_user_can( 'edit_posts' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'After saving, present whether the article was created or updated and link view_url.',
                     'readonly'     => false,
@@ -512,6 +515,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use returned post_id values with wordopedia/get-saved-article or wordopedia/refetch-saved-article.',
                     'readonly'     => true,
@@ -542,6 +546,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Present the saved article title linked to view_url and include source_url when citing Wikipedia.',
                     'readonly'     => true,
@@ -562,6 +567,7 @@ class App extends BaseApp {
                 return current_user_can( 'edit_posts' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use parent_post_id when the saved article already exists. Otherwise provide page_id or title with language so the article can be saved before the snippet is attached.',
                     'readonly'     => false,
@@ -592,6 +598,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Present the snippet text and link view_url; use parent_post_id with wordopedia/get-saved-article for full article context.',
                     'readonly'     => true,
@@ -633,6 +640,7 @@ class App extends BaseApp {
                 return current_user_can( 'read' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Use post_id with wordopedia/get-snippet. Use parent_post_id with wordopedia/get-saved-article for the full saved article and all snippets.',
                     'readonly'     => true,
@@ -663,6 +671,7 @@ class App extends BaseApp {
                 return current_user_can( 'edit_posts' );
             },
             'meta'                => [
+                'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'Report whether the saved article was updated and link view_url.',
                     'readonly'     => false,
@@ -1025,12 +1034,22 @@ class App extends BaseApp {
             return $article;
         }
 
-        $post_status = isset( $input['post_status'] ) ? sanitize_key( $input['post_status'] ) : 'publish';
-        if ( ! in_array( $post_status, [ 'publish', 'draft', 'private' ], true ) ) {
-            $post_status = 'publish';
+        $existing_id = self::find_saved_article_id( $article['page_id'], $article['language'] );
+        $has_post_status = isset( $input['post_status'] ) && is_scalar( $input['post_status'] ) && '' !== trim( (string) $input['post_status'] );
+        $current_status = $existing_id ? ( get_post_status( $existing_id ) ?: 'publish' ) : '';
+        $post_status = self::normalize_wordopedia_post_status(
+            $has_post_status ? (string) $input['post_status'] : '',
+            $current_status ?: self::default_wordopedia_post_status()
+        );
+
+        if ( $existing_id && ! current_user_can( 'edit_post', $existing_id ) ) {
+            return new \WP_Error( 'wordopedia_cannot_update', __( 'You are not allowed to update this Wikipedia article.', 'wordopedia' ) );
         }
 
-        $existing_id = self::find_saved_article_id( $article['page_id'], $article['language'] );
+        if ( ! self::current_user_can_use_wordopedia_post_status( $post_status, $current_status ) ) {
+            return new \WP_Error( 'wordopedia_cannot_publish', __( 'You are not allowed to publish Wordopedia content.', 'wordopedia' ) );
+        }
+
         $post_data = [
             'post_type'    => self::POST_TYPE,
             'post_title'   => $article['title'],
@@ -1072,6 +1091,10 @@ class App extends BaseApp {
             return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
         }
 
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return new \WP_Error( 'wordopedia_cannot_refetch', __( 'You are not allowed to refetch this Wikipedia article.', 'wordopedia' ) );
+        }
+
         $page_id  = absint( get_post_meta( $post_id, self::META_PAGE_ID, true ) );
         $language = (string) get_post_meta( $post_id, self::META_LANGUAGE, true );
 
@@ -1085,6 +1108,37 @@ class App extends BaseApp {
             'post_status'   => get_post_status( $post ) ?: 'publish',
             'force_refresh' => true,
         ] );
+    }
+
+    private static function default_wordopedia_post_status(): string {
+        return current_user_can( 'publish_posts' ) ? 'publish' : 'draft';
+    }
+
+    private static function normalize_wordopedia_post_status( string $post_status, string $fallback = '' ): string {
+        $valid_statuses = [ 'publish', 'draft', 'private' ];
+        $post_status = sanitize_key( $post_status );
+        $fallback = sanitize_key( $fallback );
+
+        if ( ! in_array( $fallback, $valid_statuses, true ) ) {
+            $fallback = self::default_wordopedia_post_status();
+        }
+
+        return in_array( $post_status, $valid_statuses, true ) ? $post_status : $fallback;
+    }
+
+    private static function current_user_can_use_wordopedia_post_status( string $post_status, string $current_status = '' ): bool {
+        $post_status = self::normalize_wordopedia_post_status( $post_status );
+        $current_status = sanitize_key( $current_status );
+
+        if ( '' !== $current_status && $post_status === $current_status ) {
+            return true;
+        }
+
+        if ( in_array( $post_status, [ 'publish', 'private' ], true ) ) {
+            return current_user_can( 'publish_posts' );
+        }
+
+        return true;
     }
 
     private static function update_article_origin_meta( int $post_id, array $article, bool $created ): void {

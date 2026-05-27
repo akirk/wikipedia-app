@@ -57,6 +57,23 @@ if ( ! function_exists( 'sanitize_text_field' ) ) {
     }
 }
 
+if ( ! function_exists( 'sanitize_key' ) ) {
+    function sanitize_key( $key ) {
+        $key = strtolower( (string) $key );
+        $key = preg_replace( '/[^a-z0-9_\-]/', '', $key );
+
+        return is_string( $key ) ? $key : '';
+    }
+}
+
+if ( ! function_exists( 'current_user_can' ) ) {
+    function current_user_can( $capability, ...$args ) {
+        $caps = $GLOBALS['wordopedia_app_test_current_user_caps'] ?? [];
+
+        return in_array( $capability, is_array( $caps ) ? $caps : [], true );
+    }
+}
+
 if ( ! function_exists( 'wp_json_encode' ) ) {
     function wp_json_encode( $data, $options = 0, $depth = 512 ) {
         return json_encode( $data, $options, $depth );
