@@ -382,7 +382,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/search-wikipedia', [
             'label'               => __( 'Search Wikipedia Articles', 'wordopedia' ),
-            'description'         => 'Searches Wikipedia in a chosen language and returns article matches with app URLs.',
+            'description'         => 'Search Wikipedia articles.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -421,7 +421,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/get-article', [
             'label'               => __( 'Get Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Fetches one live Wikipedia article by page ID or exact title, including article HTML, source metadata, and other language links.',
+            'description'         => 'Fetch a Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => self::article_lookup_input_schema(),
             'output_schema'       => self::article_detail_output_schema(),
@@ -442,7 +442,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/save-article', [
             'label'               => __( 'Save Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wordopedia_article post. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
+            'description'         => 'Save or update a Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => self::article_lookup_input_schema(),
             'output_schema'       => self::saved_article_output_schema(),
@@ -463,7 +463,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/list-saved-articles', [
             'label'               => __( 'List Saved Wikipedia Articles', 'wordopedia' ),
-            'description'         => 'Lists locally saved wordopedia_article posts with source metadata and app URLs.',
+            'description'         => 'List saved Wikipedia articles.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -513,7 +513,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/get-saved-article', [
             'label'               => __( 'Get Saved Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Returns one locally saved wordopedia_article post by WordPress post ID, including saved content, snippets, and Wikipedia source metadata.',
+            'description'         => 'Get a saved Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -544,7 +544,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/save-snippet', [
             'label'               => __( 'Save Wikipedia Snippet', 'wordopedia' ),
-            'description'         => 'Creates or updates a wordopedia_snippet post for selected article text. New snippets are attached to a saved wordopedia_article parent; when needed the parent article is saved first.',
+            'description'         => 'Save or update a Wikipedia snippet.',
             'category'            => 'wordopedia',
             'input_schema'        => self::snippet_save_input_schema(),
             'output_schema'       => self::snippet_output_schema( true ),
@@ -565,7 +565,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/get-snippet', [
             'label'               => __( 'Get Wikipedia Snippet', 'wordopedia' ),
-            'description'         => 'Returns one saved wordopedia_snippet post, including edited text, parent saved article, source metadata, and app URLs.',
+            'description'         => 'Get a saved Wikipedia snippet.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -596,7 +596,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/search-snippets', [
             'label'               => __( 'Search Wikipedia Snippets', 'wordopedia' ),
-            'description'         => 'Searches saved wordopedia_snippet posts, optionally filtered by parent saved article or Wikipedia language.',
+            'description'         => 'Search saved Wikipedia snippets.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
@@ -638,7 +638,7 @@ class App extends BaseApp {
 
         wp_register_ability( 'wordopedia/refetch-saved-article', [
             'label'               => __( 'Refetch Saved Wikipedia Article', 'wordopedia' ),
-            'description'         => 'Refetches a saved Wikipedia article from its stored page ID and language, then updates the local post content and origin metadata.',
+            'description'         => 'Refetch a saved Wikipedia article.',
             'category'            => 'wordopedia',
             'input_schema'        => [
                 'type'                 => 'object',
