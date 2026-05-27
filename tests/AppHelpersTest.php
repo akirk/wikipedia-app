@@ -7,7 +7,6 @@ class AppHelpersTest extends TestCase {
     protected function tearDown(): void {
         unset( $GLOBALS['wordopedia_app_test_user_locale'] );
         unset( $GLOBALS['wordopedia_app_test_home_url'] );
-        unset( $GLOBALS['wordopedia_app_test_current_user_caps'] );
     }
 
     /** @dataProvider localeLanguages */
@@ -97,34 +96,6 @@ class AppHelpersTest extends TestCase {
     public function test_settings_and_list_urls(): void {
         $this->assertSame( 'https://example.test/wordopedia/settings', App::get_settings_url() );
         $this->assertSame( 'https://example.test/wordopedia/list/science', App::get_list_url( 'Science' ) );
-    }
-
-    public function test_default_wordopedia_post_status_uses_draft_without_publish_cap(): void {
-        $GLOBALS['wordopedia_app_test_current_user_caps'] = [ 'edit_posts' ];
-
-        $this->assertSame( 'draft', $this->invokePrivateStatic( 'default_wordopedia_post_status', [] ) );
-    }
-
-    public function test_default_wordopedia_post_status_uses_publish_with_publish_cap(): void {
-        $GLOBALS['wordopedia_app_test_current_user_caps'] = [ 'edit_posts', 'publish_posts' ];
-
-        $this->assertSame( 'publish', $this->invokePrivateStatic( 'default_wordopedia_post_status', [] ) );
-    }
-
-    public function test_wordopedia_publish_status_requires_publish_cap_when_status_changes(): void {
-        $GLOBALS['wordopedia_app_test_current_user_caps'] = [ 'edit_posts' ];
-
-        $this->assertTrue( $this->invokePrivateStatic( 'current_user_can_use_wordopedia_post_status', [ 'draft', '' ] ) );
-        $this->assertFalse( $this->invokePrivateStatic( 'current_user_can_use_wordopedia_post_status', [ 'publish', 'draft' ] ) );
-        $this->assertFalse( $this->invokePrivateStatic( 'current_user_can_use_wordopedia_post_status', [ 'private', 'draft' ] ) );
-        $this->assertTrue( $this->invokePrivateStatic( 'current_user_can_use_wordopedia_post_status', [ 'publish', 'publish' ] ) );
-    }
-
-    public function test_wordopedia_publish_status_allows_publish_cap(): void {
-        $GLOBALS['wordopedia_app_test_current_user_caps'] = [ 'edit_posts', 'publish_posts' ];
-
-        $this->assertTrue( $this->invokePrivateStatic( 'current_user_can_use_wordopedia_post_status', [ 'publish', 'draft' ] ) );
-        $this->assertTrue( $this->invokePrivateStatic( 'current_user_can_use_wordopedia_post_status', [ 'private', 'draft' ] ) );
     }
 
     public function test_ai_assistant_welcome_tips_add_wordopedia_contextual_tips(): void {

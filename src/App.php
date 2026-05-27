@@ -313,7 +313,6 @@ class App extends BaseApp {
             'page_id'     => isset( $_POST['page_id'] ) ? absint( wp_unslash( $_POST['page_id'] ) ) : 0,
             'title'       => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
             'language'    => isset( $_POST['language'] ) ? sanitize_text_field( wp_unslash( $_POST['language'] ) ) : self::get_default_language(),
-            'post_status' => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : 'publish',
         ];
 
         $result = self::save_wordopedia_article( $input );
@@ -445,20 +444,7 @@ class App extends BaseApp {
             'label'               => __( 'Save Wikipedia Article', 'wordopedia' ),
             'description'         => 'Fetches a live Wikipedia article and saves or updates it as a local wordopedia_article post. Saved articles remember page ID, language, source URL, and revision metadata for refetching.',
             'category'            => 'wordopedia',
-            'input_schema'        => [
-                'type'                 => 'object',
-                'properties'           => array_merge(
-                    self::article_lookup_input_schema()['properties'],
-                    [
-                        'post_status' => [
-                            'type'        => 'string',
-                            'enum'        => [ 'publish', 'draft', 'private' ],
-                            'description' => 'WordPress status for the saved article.',
-                        ],
-                    ]
-                ),
-                'additionalProperties' => false,
-            ],
+            'input_schema'        => self::article_lookup_input_schema(),
             'output_schema'       => self::saved_article_output_schema(),
             'execute_callback'    => [ $this, 'ability_save_article' ],
             'permission_callback' => function() {
@@ -1035,19 +1021,8 @@ class App extends BaseApp {
         }
 
         $existing_id = self::find_saved_article_id( $article['page_id'], $article['language'] );
-        $has_post_status = isset( $input['post_status'] ) && is_scalar( $input['post_status'] ) && '' !== trim( (string) $input['post_status'] );
-        $current_status = $existing_id ? ( get_post_status( $existing_id ) ?: 'publish' ) : '';
-        $post_status = self::normalize_wordopedia_post_status(
-            $has_post_status ? (string) $input['post_status'] : '',
-            $current_status ?: self::default_wordopedia_post_status()
-        );
-
         if ( $existing_id && ! current_user_can( 'edit_post', $existing_id ) ) {
             return new \WP_Error( 'wordopedia_cannot_update', __( 'You are not allowed to update this Wikipedia article.', 'wordopedia' ) );
-        }
-
-        if ( ! self::current_user_can_use_wordopedia_post_status( $post_status, $current_status ) ) {
-            return new \WP_Error( 'wordopedia_cannot_publish', __( 'You are not allowed to publish Wordopedia content.', 'wordopedia' ) );
         }
 
         $post_data = [
@@ -1055,7 +1030,7 @@ class App extends BaseApp {
             'post_title'   => $article['title'],
             'post_content' => $article['html'],
             'post_excerpt' => $article['summary'],
-            'post_status'  => $post_status,
+            'post_status'  => 'publish',
             'post_name'    => self::build_article_slug( $article['language'], $article['title'], $article['page_id'] ),
         ];
 
@@ -1105,40 +1080,8 @@ class App extends BaseApp {
         return self::save_wordopedia_article( [
             'page_id'       => $page_id,
             'language'      => $language,
-            'post_status'   => get_post_status( $post ) ?: 'publish',
             'force_refresh' => true,
         ] );
-    }
-
-    private static function default_wordopedia_post_status(): string {
-        return current_user_can( 'publish_posts' ) ? 'publish' : 'draft';
-    }
-
-    private static function normalize_wordopedia_post_status( string $post_status, string $fallback = '' ): string {
-        $valid_statuses = [ 'publish', 'draft', 'private' ];
-        $post_status = sanitize_key( $post_status );
-        $fallback = sanitize_key( $fallback );
-
-        if ( ! in_array( $fallback, $valid_statuses, true ) ) {
-            $fallback = self::default_wordopedia_post_status();
-        }
-
-        return in_array( $post_status, $valid_statuses, true ) ? $post_status : $fallback;
-    }
-
-    private static function current_user_can_use_wordopedia_post_status( string $post_status, string $current_status = '' ): bool {
-        $post_status = self::normalize_wordopedia_post_status( $post_status );
-        $current_status = sanitize_key( $current_status );
-
-        if ( '' !== $current_status && $post_status === $current_status ) {
-            return true;
-        }
-
-        if ( in_array( $post_status, [ 'publish', 'private' ], true ) ) {
-            return current_user_can( 'publish_posts' );
-        }
-
-        return true;
     }
 
     private static function update_article_origin_meta( int $post_id, array $article, bool $created ): void {

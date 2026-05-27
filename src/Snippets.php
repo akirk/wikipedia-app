@@ -180,17 +180,13 @@ trait Snippets {
 
         $snippet_title = self::input_text_value( $input, [ 'snippet_title' ] );
         $snippet_title = '' !== trim( $snippet_title ) ? sanitize_text_field( $snippet_title ) : self::build_snippet_title( $parent, $text );
-        $post_status = self::snippet_post_status( $input, $parent );
-        if ( ! self::current_user_can_use_wordopedia_post_status( $post_status ) ) {
-            return new \WP_Error( 'wordopedia_cannot_publish_snippet', __( 'You are not allowed to publish Wordopedia snippets.', 'wordopedia' ) );
-        }
 
         $post_id = wp_insert_post( [
             'post_type'    => self::POST_TYPE_SNIPPET,
             'post_title'   => $snippet_title,
             'post_content' => $snippet_content['content'],
             'post_excerpt' => self::snippet_excerpt( $text, 32 ),
-            'post_status'  => $post_status,
+            'post_status'  => 'publish',
             'post_parent'  => $parent_post_id,
             'post_author'  => get_current_user_id(),
         ], true );
@@ -234,18 +230,13 @@ trait Snippets {
 
         $snippet_title = self::input_text_value( $input, [ 'snippet_title' ] );
         $snippet_title = '' !== trim( $snippet_title ) ? sanitize_text_field( $snippet_title ) : self::build_snippet_title( $parent, $text );
-        $current_status = get_post_status( $post ) ?: 'publish';
-        $post_status = self::snippet_post_status( $input, $parent, $current_status );
-        if ( ! self::current_user_can_use_wordopedia_post_status( $post_status, $current_status ) ) {
-            return new \WP_Error( 'wordopedia_cannot_publish_snippet', __( 'You are not allowed to publish Wordopedia snippets.', 'wordopedia' ) );
-        }
 
         $updated = wp_update_post( [
             'ID'           => $snippet_id,
             'post_title'   => $snippet_title,
             'post_content' => $snippet_content['content'],
             'post_excerpt' => self::snippet_excerpt( $text, 32 ),
-            'post_status'  => $post_status,
+            'post_status'  => 'publish',
         ], true );
 
         if ( is_wp_error( $updated ) ) {
@@ -513,13 +504,6 @@ trait Snippets {
         update_post_meta( $post_id, self::META_SNIPPET_UPDATED_AT, current_time( 'mysql' ) );
     }
 
-    private static function snippet_post_status( array $input, \WP_Post $parent, string $fallback = '' ): string {
-        $post_status = isset( $input['post_status'] ) && is_scalar( $input['post_status'] ) ? (string) $input['post_status'] : '';
-        $fallback = $fallback ?: ( get_post_status( $parent ) ?: self::default_wordopedia_post_status() );
-
-        return self::normalize_wordopedia_post_status( $post_status, $fallback );
-    }
-
     private static function get_saved_article_view_url( \WP_Post $post ): string {
         return self::get_app_url( 'saved/' . ( $post->post_name ?: (int) $post->ID ) );
     }
@@ -541,7 +525,6 @@ trait Snippets {
             'page_id'        => isset( $_POST['page_id'] ) ? absint( wp_unslash( $_POST['page_id'] ) ) : 0,
             'title'          => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
             'language'       => isset( $_POST['language'] ) ? sanitize_text_field( wp_unslash( $_POST['language'] ) ) : self::get_default_language(),
-            'post_status'    => isset( $_POST['post_status'] ) ? sanitize_key( wp_unslash( $_POST['post_status'] ) ) : '',
             'snippet_title'  => isset( $_POST['snippet_title'] ) ? sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) ) : '',
             'text'           => isset( $_POST['text'] ) && is_scalar( $_POST['text'] ) ? (string) wp_unslash( $_POST['text'] ) : '',
             'html'           => isset( $_POST['html'] ) && is_scalar( $_POST['html'] ) ? (string) wp_unslash( $_POST['html'] ) : '',
@@ -1018,11 +1001,6 @@ trait Snippets {
                 'language'        => [
                     'type'        => 'string',
                     'description' => 'Wikipedia language subdomain for the parent article.',
-                ],
-                'post_status'     => [
-                    'type'        => 'string',
-                    'enum'        => [ 'publish', 'draft', 'private' ],
-                    'description' => 'WordPress status for the snippet.',
                 ],
             ],
             'required'             => [ 'text' ],

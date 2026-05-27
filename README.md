@@ -14,7 +14,7 @@ The app also supports passage-level notes. Users can highlight useful text while
 
 Under the hood, Wordopedia stores data with native WordPress post, post meta, taxonomy, and user meta APIs. When the WordPress Abilities API is available, it also exposes assistant-friendly operations for searching, fetching, saving, listing, refetching, and annotating Wikipedia articles.
 
-All app routes require a logged-in WordPress user. Wordopedia is a shared logged-in library: reading and searching saved articles or snippets uses normal `read` access rather than per-post ownership checks. Creating draft articles or snippets requires `edit_posts`; publishing content or setting it private requires `publish_posts`; updating or refetching an existing article or snippet also requires `edit_post` for the target post. Deleting snippets requires `delete_posts` and `delete_post` for the target snippet.
+All app routes require a logged-in WordPress user. Wordopedia is a shared logged-in library: reading and searching saved articles or snippets uses normal `read` access rather than per-post ownership checks. Saving articles or snippets requires `edit_posts`; updating or refetching an existing article or snippet also requires `edit_post` for the target post. Deleting snippets requires `delete_posts` and `delete_post` for the target snippet. App-created articles and snippets are stored as published posts.
 
 ## Data model
 
@@ -55,7 +55,7 @@ When WordPress provides the Abilities API, Wordopedia registers abilities under 
 
 The plugin also adds AI assistant domain, instruction, and welcome-tip hints so assistant responses can link back to Wordopedia app URLs, cite Wikipedia source URLs where appropriate, and suggest useful Wordopedia tasks from the app screens.
 
-Abilities are exposed in REST when the Abilities API supports it. The same permission model applies there: logged-in users can read the shared library, while write abilities enforce the relevant WordPress create, publish, and object-edit capabilities.
+Abilities are exposed in REST when the Abilities API supports it. The same permission model applies there: logged-in users can read the shared library, while write abilities enforce the relevant WordPress create and object-edit capabilities.
 
 ## Requirements
 
