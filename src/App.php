@@ -453,7 +453,7 @@ class App extends BaseApp {
                         'post_status' => [
                             'type'        => 'string',
                             'enum'        => [ 'publish', 'draft', 'private' ],
-                            'description' => 'WordPress status for the saved article. Defaults to publish for users who can publish posts, otherwise draft. Publish and private require publish_posts.',
+                            'description' => 'WordPress status for the saved article.',
                         ],
                     ]
                 ),

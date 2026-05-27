@@ -1022,7 +1022,7 @@ trait Snippets {
                 'post_status'     => [
                     'type'        => 'string',
                     'enum'        => [ 'publish', 'draft', 'private' ],
-                    'description' => 'WordPress status for the snippet. Defaults to the parent saved article status. Publish and private require publish_posts.',
+                    'description' => 'WordPress status for the snippet.',
                 ],
             ],
             'required'             => [ 'text' ],
