@@ -32,6 +32,7 @@ class App extends BaseApp {
     const NONCE_UPDATE_SNIPPET  = 'wordopedia_update_snippet';
     const NONCE_DELETE_SNIPPET  = 'wordopedia_delete_snippet';
     const NONCE_SAVE_SETTINGS   = 'wordopedia_save_settings';
+    const NONCE_SIDELOAD_IMAGES = 'wordopedia_sideload_images';
 
     const WORDOPEDIA_CACHE_SEARCH   = 300;
     const WORDOPEDIA_CACHE_ARTICLE  = 3600;
@@ -49,6 +50,7 @@ class App extends BaseApp {
         add_action( 'init', [ $this, 'register_post_types' ] );
         add_action( 'admin_post_wordopedia_save_article', [ $this, 'handle_save_article' ] );
         add_action( 'admin_post_wordopedia_refetch_article', [ $this, 'handle_refetch_article' ] );
+        add_action( 'admin_post_wordopedia_sideload_article_images', [ $this, 'handle_sideload_article_images' ] );
         add_action( 'admin_post_wordopedia_save_snippet', [ $this, 'handle_save_snippet' ] );
         add_action( 'admin_post_wordopedia_update_snippet', [ $this, 'handle_update_snippet' ] );
         add_action( 'admin_post_wordopedia_delete_snippet', [ $this, 'handle_delete_snippet' ] );
@@ -344,6 +346,37 @@ class App extends BaseApp {
         }
 
         wp_safe_redirect( add_query_arg( 'refetched', 1, $result['view_url'] ) );
+        exit;
+    }
+
+    public function handle_sideload_article_images(): void {
+        if ( ! current_user_can( 'edit_posts' ) || ! current_user_can( 'upload_files' ) ) {
+            wp_die( esc_html__( 'You are not allowed to download Wikipedia article images.', 'wordopedia' ) );
+        }
+
+        $post_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+        check_admin_referer( self::NONCE_SIDELOAD_IMAGES . '_' . $post_id );
+
+        $image_urls = isset( $_POST['image_urls'] ) && is_array( $_POST['image_urls'] )
+            ? wp_unslash( $_POST['image_urls'] )
+            : [];
+
+        $result = self::sideload_saved_article_images( $post_id, $image_urls );
+        $referer = wp_get_referer() ?: self::get_app_url();
+
+        if ( is_wp_error( $result ) ) {
+            wp_safe_redirect( add_query_arg( 'wordopedia_error', rawurlencode( $result->get_error_message() ), $referer ) );
+            exit;
+        }
+
+        $args = [
+            'images_imported' => isset( $result['imported'] ) ? absint( $result['imported'] ) : 0,
+        ];
+        if ( ! empty( $result['failed'] ) ) {
+            $args['images_failed'] = absint( $result['failed'] );
+        }
+
+        wp_safe_redirect( add_query_arg( $args, $result['view_url'] ?? $referer ) );
         exit;
     }
 
@@ -1082,6 +1115,425 @@ class App extends BaseApp {
             'language'      => $language,
             'force_refresh' => true,
         ] );
+    }
+
+    public static function sideload_saved_article_images( int $post_id, array $image_urls ) {
+        if ( ! current_user_can( 'edit_posts' ) || ! current_user_can( 'upload_files' ) ) {
+            return new \WP_Error( 'wordopedia_cannot_import_images', __( 'You are not allowed to download Wikipedia article images.', 'wordopedia' ) );
+        }
+
+        $post = get_post( $post_id );
+        if ( ! $post instanceof \WP_Post || self::POST_TYPE !== $post->post_type ) {
+            return new \WP_Error( 'wordopedia_article_not_found', __( 'Saved Wikipedia article not found.', 'wordopedia' ) );
+        }
+
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return new \WP_Error( 'wordopedia_cannot_import_images', __( 'You are not allowed to update this Wikipedia article.', 'wordopedia' ) );
+        }
+
+        $available = [];
+        foreach ( self::article_images_from_html( $post->post_content ) as $image ) {
+            if ( empty( $image['url'] ) || ! empty( $image['is_local'] ) ) {
+                continue;
+            }
+
+            $available[ $image['url'] ] = true;
+        }
+
+        $selected = [];
+        foreach ( $image_urls as $image_url ) {
+            if ( ! is_scalar( $image_url ) ) {
+                continue;
+            }
+
+            $image_url = self::normalize_article_image_url( (string) $image_url );
+            if ( $image_url && isset( $available[ $image_url ] ) ) {
+                $selected[ $image_url ] = true;
+            }
+        }
+
+        if ( ! $selected ) {
+            return new \WP_Error( 'wordopedia_no_images_selected', __( 'Choose at least one remote article image to download.', 'wordopedia' ) );
+        }
+
+        $url_map = [];
+        $failed = 0;
+        foreach ( array_keys( $selected ) as $source_url ) {
+            $imported = self::sideload_article_image( $source_url, $post_id );
+            if ( is_wp_error( $imported ) ) {
+                $failed++;
+                continue;
+            }
+
+            if ( ! empty( $imported['url'] ) ) {
+                $url_map[ $source_url ] = $imported['url'];
+            }
+        }
+
+        if ( ! $url_map ) {
+            return new \WP_Error( 'wordopedia_image_import_failed', __( 'The selected images could not be downloaded.', 'wordopedia' ) );
+        }
+
+        $updated = wp_update_post( [
+            'ID'           => $post_id,
+            'post_content' => wp_kses( self::rewrite_article_image_urls( $post->post_content, $url_map ), self::article_allowed_html() ),
+        ], true );
+
+        if ( is_wp_error( $updated ) ) {
+            return $updated;
+        }
+
+        $thumbnail_url = self::normalize_article_image_url( (string) get_post_meta( $post_id, self::META_THUMBNAIL_URL, true ) );
+        if ( $thumbnail_url && isset( $url_map[ $thumbnail_url ] ) ) {
+            update_post_meta( $post_id, self::META_THUMBNAIL_URL, esc_url_raw( $url_map[ $thumbnail_url ] ) );
+        }
+
+        return [
+            'post_id'  => $post_id,
+            'imported' => count( $url_map ),
+            'failed'   => $failed,
+            'view_url' => self::get_saved_article_view_url( $post ),
+            'images'   => $url_map,
+        ];
+    }
+
+    public static function article_images_from_html( string $html ): array {
+        if ( '' === trim( $html ) ) {
+            return [];
+        }
+
+        if ( ! class_exists( '\DOMDocument' ) ) {
+            return self::article_images_from_html_fallback( $html );
+        }
+
+        $previous = libxml_use_internal_errors( true );
+        $document = new \DOMDocument();
+        $flags = 0;
+        if ( defined( 'LIBXML_HTML_NOIMPLIED' ) ) {
+            $flags |= LIBXML_HTML_NOIMPLIED;
+        }
+        if ( defined( 'LIBXML_HTML_NODEFDTD' ) ) {
+            $flags |= LIBXML_HTML_NODEFDTD;
+        }
+
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wordopedia-app-article-root">' . $html . '</div>', $flags );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $previous );
+
+        if ( ! $loaded ) {
+            return self::article_images_from_html_fallback( $html );
+        }
+
+        $images = [];
+        $seen = [];
+        foreach ( $document->getElementsByTagName( 'img' ) as $image ) {
+            if ( ! self::is_visible_article_image( $image ) ) {
+                continue;
+            }
+
+            $url = self::normalize_article_image_url( $image->getAttribute( 'src' ) );
+            if ( ! $url ) {
+                $srcset_urls = self::article_srcset_urls( $image->getAttribute( 'srcset' ) );
+                $url = $srcset_urls ? $srcset_urls[0] : '';
+            }
+
+            if ( ! $url || isset( $seen[ $url ] ) ) {
+                continue;
+            }
+
+            $seen[ $url ] = true;
+            $images[] = self::format_article_image( $url, $image->getAttribute( 'alt' ), $image->getAttribute( 'width' ), $image->getAttribute( 'height' ) );
+        }
+
+        return $images;
+    }
+
+    private static function is_visible_article_image( \DOMElement $image ): bool {
+        $hidden_classes = [ 'mw-editsection', 'noprint', 'metadata', 'ambox' ];
+
+        for ( $node = $image; $node instanceof \DOMElement; $node = $node->parentNode ) {
+            if ( $node->hasAttribute( 'hidden' ) || 'true' === strtolower( $node->getAttribute( 'aria-hidden' ) ) ) {
+                return false;
+            }
+
+            $style = strtolower( $node->getAttribute( 'style' ) );
+            if ( preg_match( '/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/', $style ) ) {
+                return false;
+            }
+
+            $classes = preg_split( '/\s+/', strtolower( $node->getAttribute( 'class' ) ) );
+            foreach ( is_array( $classes ) ? $classes : [] as $class ) {
+                if ( in_array( $class, $hidden_classes, true ) ) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static function article_images_from_html_fallback( string $html ): array {
+        preg_match_all( '~<img\b[^>]*>~i', $html, $matches );
+
+        $images = [];
+        $seen = [];
+        foreach ( $matches[0] ?? [] as $tag ) {
+            $url = self::normalize_article_image_url( self::html_attribute_from_tag( $tag, 'src' ) );
+            if ( ! $url ) {
+                $srcset_urls = self::article_srcset_urls( self::html_attribute_from_tag( $tag, 'srcset' ) );
+                $url = $srcset_urls ? $srcset_urls[0] : '';
+            }
+
+            if ( ! $url || isset( $seen[ $url ] ) ) {
+                continue;
+            }
+
+            $seen[ $url ] = true;
+            $images[] = self::format_article_image(
+                $url,
+                self::html_attribute_from_tag( $tag, 'alt' ),
+                self::html_attribute_from_tag( $tag, 'width' ),
+                self::html_attribute_from_tag( $tag, 'height' )
+            );
+        }
+
+        return $images;
+    }
+
+    private static function html_attribute_from_tag( string $tag, string $attribute ): string {
+        $attribute = preg_quote( $attribute, '~' );
+
+        if ( preg_match( '~\s' . $attribute . '\s*=\s*(["\'])(.*?)\1~is', $tag, $matches ) ) {
+            return html_entity_decode( $matches[2], ENT_QUOTES, 'UTF-8' );
+        }
+
+        if ( preg_match( '~\s' . $attribute . '\s*=\s*([^\s>]+)~is', $tag, $matches ) ) {
+            return html_entity_decode( $matches[1], ENT_QUOTES, 'UTF-8' );
+        }
+
+        return '';
+    }
+
+    private static function format_article_image( string $url, string $alt = '', string $width = '', string $height = '' ): array {
+        $alt = trim( sanitize_text_field( html_entity_decode( $alt, ENT_QUOTES, 'UTF-8' ) ) );
+
+        return [
+            'url'       => $url,
+            'label'     => $alt ?: self::article_image_filename( $url ),
+            'alt'       => $alt,
+            'width'     => absint( $width ),
+            'height'    => absint( $height ),
+            'host'      => self::article_image_host( $url ),
+            'is_local'  => self::is_local_article_image_url( $url ),
+        ];
+    }
+
+    private static function article_image_filename( string $url ): string {
+        $parts = wp_parse_url( $url );
+        $path = is_array( $parts ) && ! empty( $parts['path'] ) ? (string) $parts['path'] : '';
+        $filename = $path ? rawurldecode( basename( $path ) ) : '';
+
+        return $filename ? sanitize_text_field( $filename ) : __( 'Article image', 'wordopedia' );
+    }
+
+    private static function article_image_host( string $url ): string {
+        $parts = wp_parse_url( $url );
+        return is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( (string) $parts['host'] ) : '';
+    }
+
+    private static function is_local_article_image_url( string $url ): bool {
+        $host = self::article_image_host( $url );
+        $home_parts = wp_parse_url( home_url( '/' ) );
+        $home_host = is_array( $home_parts ) && ! empty( $home_parts['host'] ) ? strtolower( (string) $home_parts['host'] ) : '';
+
+        return $host && $home_host && $host === $home_host;
+    }
+
+    private static function article_srcset_urls( string $srcset ): array {
+        $urls = [];
+        $candidates = preg_split( '/\s*,\s*/', trim( $srcset ) );
+        foreach ( is_array( $candidates ) ? $candidates : [] as $candidate ) {
+            $parts = preg_split( '/\s+/', trim( $candidate ) );
+            $url = $parts ? self::normalize_article_image_url( $parts[0] ) : '';
+            if ( $url && ! in_array( $url, $urls, true ) ) {
+                $urls[] = $url;
+            }
+        }
+
+        return $urls;
+    }
+
+    private static function normalize_article_image_url( string $url ): string {
+        $url = trim( html_entity_decode( $url, ENT_QUOTES, 'UTF-8' ) );
+        if ( '' === $url ) {
+            return '';
+        }
+
+        if ( 0 === strpos( $url, '//' ) ) {
+            $url = 'https:' . $url;
+        }
+
+        $parts = wp_parse_url( $url );
+        if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) {
+            return '';
+        }
+
+        $scheme = strtolower( (string) $parts['scheme'] );
+        if ( ! in_array( $scheme, [ 'http', 'https' ], true ) ) {
+            return '';
+        }
+
+        return esc_url_raw( $url );
+    }
+
+    private static function sideload_article_image( string $url, int $post_id ) {
+        self::include_media_sideload_dependencies();
+
+        $attachment_id = self::find_sideloaded_article_image_id( $url );
+        if ( ! $attachment_id ) {
+            $attachment_id = media_sideload_image( $url, $post_id, null, 'id' );
+        }
+
+        if ( is_wp_error( $attachment_id ) ) {
+            return $attachment_id;
+        }
+
+        $attachment_id = absint( $attachment_id );
+        $local_url = $attachment_id ? wp_get_attachment_url( $attachment_id ) : '';
+        if ( ! $local_url ) {
+            return new \WP_Error( 'wordopedia_image_import_failed', __( 'The image was downloaded but its media URL could not be found.', 'wordopedia' ) );
+        }
+
+        update_post_meta( $attachment_id, '_wordopedia_source_image_url', esc_url_raw( $url ) );
+
+        return [
+            'attachment_id' => $attachment_id,
+            'url'           => esc_url_raw( $local_url ),
+        ];
+    }
+
+    private static function include_media_sideload_dependencies(): void {
+        if ( ! function_exists( 'media_sideload_image' ) && defined( 'ABSPATH' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+    }
+
+    private static function find_sideloaded_article_image_id( string $url ): int {
+        if ( ! function_exists( 'get_posts' ) ) {
+            return 0;
+        }
+
+        $attachments = get_posts( [
+            'post_type'              => 'attachment',
+            'post_status'            => 'inherit',
+            'posts_per_page'         => 1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'meta_query'             => [
+                'relation' => 'OR',
+                [
+                    'key'   => '_source_url',
+                    'value' => $url,
+                ],
+                [
+                    'key'   => '_wordopedia_source_image_url',
+                    'value' => $url,
+                ],
+            ],
+        ] );
+
+        return $attachments ? absint( $attachments[0] ) : 0;
+    }
+
+    private static function rewrite_article_image_urls( string $html, array $url_map ): string {
+        $normalized_map = [];
+        foreach ( $url_map as $source_url => $replacement_url ) {
+            if ( ! is_scalar( $source_url ) || ! is_scalar( $replacement_url ) ) {
+                continue;
+            }
+
+            $source_url = self::normalize_article_image_url( (string) $source_url );
+            $replacement_url = esc_url_raw( (string) $replacement_url );
+            if ( $source_url && $replacement_url ) {
+                $normalized_map[ $source_url ] = $replacement_url;
+            }
+        }
+
+        if ( ! $normalized_map || '' === trim( $html ) ) {
+            return $html;
+        }
+
+        if ( ! class_exists( '\DOMDocument' ) ) {
+            return self::rewrite_article_image_urls_fallback( $html, $normalized_map );
+        }
+
+        $previous = libxml_use_internal_errors( true );
+        $document = new \DOMDocument();
+        $flags = 0;
+        if ( defined( 'LIBXML_HTML_NOIMPLIED' ) ) {
+            $flags |= LIBXML_HTML_NOIMPLIED;
+        }
+        if ( defined( 'LIBXML_HTML_NODEFDTD' ) ) {
+            $flags |= LIBXML_HTML_NODEFDTD;
+        }
+
+        $loaded = $document->loadHTML( '<?xml encoding="utf-8" ?><div id="wordopedia-app-article-root">' . $html . '</div>', $flags );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $previous );
+
+        if ( ! $loaded ) {
+            return self::rewrite_article_image_urls_fallback( $html, $normalized_map );
+        }
+
+        foreach ( $document->getElementsByTagName( 'img' ) as $image ) {
+            $source_url = self::matching_article_image_url( $image, $normalized_map );
+            if ( ! $source_url ) {
+                continue;
+            }
+
+            $image->setAttribute( 'src', $normalized_map[ $source_url ] );
+            $image->removeAttribute( 'srcset' );
+            $image->removeAttribute( 'sizes' );
+        }
+
+        $root = $document->getElementById( 'wordopedia-app-article-root' );
+        if ( ! $root ) {
+            return $html;
+        }
+
+        $rewritten = '';
+        foreach ( $root->childNodes as $child ) {
+            $rewritten .= $document->saveHTML( $child );
+        }
+
+        return $rewritten;
+    }
+
+    private static function matching_article_image_url( \DOMElement $image, array $url_map ): string {
+        $src = self::normalize_article_image_url( $image->getAttribute( 'src' ) );
+        if ( $src && isset( $url_map[ $src ] ) ) {
+            return $src;
+        }
+
+        foreach ( self::article_srcset_urls( $image->getAttribute( 'srcset' ) ) as $srcset_url ) {
+            if ( isset( $url_map[ $srcset_url ] ) ) {
+                return $srcset_url;
+            }
+        }
+
+        return '';
+    }
+
+    private static function rewrite_article_image_urls_fallback( string $html, array $url_map ): string {
+        foreach ( $url_map as $source_url => $replacement_url ) {
+            $html = str_replace( [ $source_url, preg_replace( '~^https?:~', '', $source_url ) ], $replacement_url, $html );
+        }
+
+        return $html;
     }
 
     private static function update_article_origin_meta( int $post_id, array $article, bool $created ): void {

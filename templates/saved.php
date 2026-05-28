@@ -34,6 +34,21 @@ include __DIR__ . '/_header.php';
 <?php if ( isset( $_GET['refetched'] ) ) : ?>
     <div class="wiki-notice success"><?php esc_html_e( 'Refetched from Wikipedia.', 'wordopedia' ); ?></div>
 <?php endif; ?>
+<?php if ( isset( $_GET['images_imported'] ) ) : ?>
+    <?php $images_imported = absint( wp_unslash( $_GET['images_imported'] ) ); ?>
+    <div class="wiki-notice success">
+        <?php
+        printf(
+            /* translators: %d: number of article images downloaded */
+            esc_html( _n( '%d image downloaded.', '%d images downloaded.', $images_imported, 'wordopedia' ) ),
+            $images_imported
+        );
+        ?>
+    </div>
+<?php endif; ?>
+<?php if ( isset( $_GET['images_failed'] ) ) : ?>
+    <div class="wiki-notice error"><?php esc_html_e( 'Some images could not be downloaded.', 'wordopedia' ); ?></div>
+<?php endif; ?>
 <?php if ( isset( $_GET['snippet_saved'] ) ) : ?>
     <div class="wiki-notice success"><?php esc_html_e( 'Snippet saved.', 'wordopedia' ); ?></div>
 <?php endif; ?>
