@@ -917,6 +917,14 @@ class App extends BaseApp {
         $metadata['html']    = $html;
         $metadata['app_url'] = self::get_article_url( $metadata['language'], $metadata['title'], $metadata['page_id'] );
 
+        $saved_article_id = self::find_saved_article_id( $metadata['page_id'], $metadata['language'] );
+        if ( $saved_article_id ) {
+            $saved_post = get_post( $saved_article_id );
+            if ( $saved_post instanceof \WP_Post && self::POST_TYPE === $saved_post->post_type ) {
+                $metadata['saved_article'] = self::format_saved_article( $saved_post );
+            }
+        }
+
         return $metadata;
     }
 
@@ -1153,6 +1161,46 @@ class App extends BaseApp {
         }
 
         return $articles;
+    }
+
+    public static function group_articles_by_initial( array $articles ): array {
+        usort( $articles, function( $a, $b ) {
+            $a_title = is_array( $a ) && isset( $a['title'] ) ? (string) $a['title'] : '';
+            $b_title = is_array( $b ) && isset( $b['title'] ) ? (string) $b['title'] : '';
+            return strcasecmp( $a_title, $b_title );
+        } );
+
+        $groups = [];
+        foreach ( $articles as $article ) {
+            if ( ! is_array( $article ) ) {
+                continue;
+            }
+
+            $title  = trim( (string) ( $article['title'] ?? '' ) );
+            $letter = function_exists( 'mb_substr' ) ? mb_substr( $title, 0, 1 ) : substr( $title, 0, 1 );
+            $letter = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $letter ) : strtoupper( $letter );
+            if ( '' === $letter || ! preg_match( '/[[:alpha:]]/u', $letter ) ) {
+                $letter = '#';
+            }
+
+            if ( ! isset( $groups[ $letter ] ) ) {
+                $groups[ $letter ] = [];
+            }
+
+            $groups[ $letter ][] = $article;
+        }
+
+        uksort( $groups, function( $a, $b ) {
+            if ( '#' === $a ) {
+                return 1;
+            }
+            if ( '#' === $b ) {
+                return -1;
+            }
+            return strcasecmp( $a, $b );
+        } );
+
+        return $groups;
     }
 
     public static function format_saved_article( $post, bool $include_content = false, array $extra = [] ): array {
@@ -2070,6 +2118,7 @@ class App extends BaseApp {
                         'last_revision_id' => [ 'type' => 'string' ],
                         'remote_touched'   => [ 'type' => 'string' ],
                         'app_url'          => [ 'type' => 'string' ],
+                        'saved_article'    => self::saved_article_schema(),
                     ],
                 ],
             ],
@@ -2087,24 +2136,29 @@ class App extends BaseApp {
 
     private static function saved_article_schema( bool $include_content = false ): array {
         $properties = [
-            'post_id'          => [ 'type' => 'integer', 'description' => 'Use with wordopedia/get-saved-article or wordopedia/refetch-saved-article.' ],
-            'id'               => [ 'type' => 'integer' ],
-            'title'            => [ 'type' => 'string' ],
-            'status'           => [ 'type' => 'string' ],
-            'summary'          => [ 'type' => 'string' ],
-            'page_id'          => [ 'type' => 'integer' ],
-            'language'         => [ 'type' => 'string' ],
-            'language_label'   => [ 'type' => 'string' ],
-            'source_url'       => [ 'type' => 'string' ],
-            'thumbnail_url'    => [ 'type' => 'string' ],
-            'last_revision_id' => [ 'type' => 'string' ],
-            'remote_touched'   => [ 'type' => 'string' ],
-            'saved_at'         => [ 'type' => 'string' ],
-            'refetched_at'     => [ 'type' => 'string' ],
-            'view_url'         => [ 'type' => 'string' ],
-            'live_app_url'     => [ 'type' => 'string' ],
-            'edit_url'         => [ 'type' => 'string' ],
-            'lists'            => [
+            'post_id'              => [ 'type' => 'integer', 'description' => 'Use with wordopedia/get-saved-article or wordopedia/refetch-saved-article.' ],
+            'id'                   => [ 'type' => 'integer' ],
+            'title'                => [ 'type' => 'string' ],
+            'status'               => [ 'type' => 'string' ],
+            'summary'              => [ 'type' => 'string' ],
+            'page_id'              => [ 'type' => 'integer' ],
+            'language'             => [ 'type' => 'string' ],
+            'language_label'       => [ 'type' => 'string' ],
+            'source_url'           => [ 'type' => 'string' ],
+            'thumbnail_url'        => [ 'type' => 'string' ],
+            'last_revision_id'     => [ 'type' => 'string' ],
+            'remote_touched'       => [ 'type' => 'string' ],
+            'saved_at'             => [ 'type' => 'string' ],
+            'saved_at_display'     => [ 'type' => 'string' ],
+            'refetched_at'         => [ 'type' => 'string' ],
+            'refetched_at_display' => [ 'type' => 'string' ],
+            'last_saved_at'        => [ 'type' => 'string' ],
+            'last_saved_at_display' => [ 'type' => 'string' ],
+            'view_url'             => [ 'type' => 'string' ],
+            'live_app_url'         => [ 'type' => 'string' ],
+            'app_url'              => [ 'type' => 'string' ],
+            'edit_url'             => [ 'type' => 'string' ],
+            'lists'                => [
                 'type'  => 'array',
                 'items' => [
                     'type'       => 'object',
@@ -2116,8 +2170,8 @@ class App extends BaseApp {
                     ],
                 ],
             ],
-            'created'          => [ 'type' => 'boolean' ],
-            'updated'          => [ 'type' => 'boolean' ],
+            'created'              => [ 'type' => 'boolean' ],
+            'updated'              => [ 'type' => 'boolean' ],
         ];
 
         if ( $include_content ) {

@@ -69,9 +69,15 @@ a:hover, a:focus { color: var(--wiki-primary-hover); text-decoration: underline;
 .wiki-page-head h1 { margin: 0 0 0.15rem; font-family: var(--wiki-serif); font-size: clamp(1.85rem, 4vw, 2.45rem); font-weight: 400; line-height: 1.18; letter-spacing: 0; }
 .wiki-article-head { margin-bottom: 0.8rem; }
 .wiki-subtitle { margin: 0; color: var(--wiki-muted); font-size: 0.92rem; }
-.wiki-saved-status { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.55rem; color: var(--wiki-fg); font-weight: 600; }
-.wiki-saved-refresh { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
-.wiki-saved-status:hover .wiki-saved-refresh, .wiki-saved-refresh:focus-within { opacity: 1; pointer-events: auto; }
+.wiki-version-status { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.55rem; text-decoration: none; }
+.wiki-version-current { padding: 0 0.35rem; border: 1px solid var(--wiki-line); border-radius: 2px; background: var(--wiki-card-alt); color: var(--wiki-fg); font-size: 0.82rem; font-weight: 600; line-height: 1.45; }
+.wiki-version-current.wiki-version-live { color: var(--wiki-primary); }
+.wiki-version-link { color: var(--wiki-primary); font-weight: 600; }
+.wiki-version-link.wiki-version-saved { color: var(--wiki-muted); font-weight: 500; }
+.wiki-version-status:hover, .wiki-version-status:focus { color: var(--wiki-primary-hover); text-decoration: underline; }
+.wiki-version-current:hover, .wiki-version-current:focus { text-decoration: none; }
+.wiki-version-current.wiki-version-saved:hover, .wiki-version-current.wiki-version-saved:focus { color: var(--wiki-fg); }
+.wiki-version-refresh { display: inline-flex; margin-left: 0.25rem; vertical-align: middle; }
 .wiki-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end; }
 .wiki-language-switcher { display: inline-flex; align-items: center; height: var(--wiki-control-height); border: 1px solid var(--wiki-line); border-radius: 2px; background: var(--wiki-card-alt); overflow: hidden; box-sizing: border-box; }
 .wiki-language-switcher span { display: inline-flex; align-items: center; align-self: stretch; padding: 0 var(--wiki-control-pad-x); color: var(--wiki-muted); font-size: 0.82rem; font-weight: 600; border-right: 1px solid var(--wiki-line); white-space: nowrap; }
@@ -218,7 +224,4 @@ input:focus, select:focus, textarea:focus, button:focus, a:focus { outline: 2px 
     .wiki-wordopedia-search .wiki-search-field > span,
     .wiki-compact-search .wiki-search-field > span { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
     .wiki-wordopedia-search input[type="search"], .wiki-compact-search input[type="search"] { height: 2.5rem; min-height: 2.5rem; font-size: 1rem; }
-}
-@media (hover: none) {
-    .wiki-saved-refresh { opacity: 1; pointer-events: auto; }
 }
