@@ -13,6 +13,44 @@
         return options;
     }
 
+    document.querySelectorAll('[data-wiki-nav-menu-root]').forEach(function (root) {
+        var toggle = root.querySelector('[data-wiki-nav-menu-toggle]');
+        var panel = root.querySelector('[data-wiki-nav-menu-panel]');
+        var menu = root.querySelector('.wiki-nav-menu');
+
+        if (!toggle || !panel || !menu) {
+            return;
+        }
+
+        function setOpen(open) {
+            panel.hidden = !open;
+            menu.classList.toggle('is-open', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            setOpen(panel.hidden);
+        });
+
+        document.addEventListener('click', function (event) {
+            if (panel.hidden || root.contains(event.target)) {
+                return;
+            }
+
+            setOpen(false);
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if ('Escape' !== event.key || panel.hidden) {
+                return;
+            }
+
+            setOpen(false);
+            toggle.focus();
+        });
+    });
+
     function languageDisplayName(language) {
         var name = language.localname || language.label || language.name || language.code || '';
         var autonym = language.name || language.autonym || '';
