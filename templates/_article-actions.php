@@ -21,10 +21,10 @@ $is_saved_view = ! empty( $is_saved_view );
         </select>
     </label>
 <?php endif; ?>
-<?php if ( $is_saved_view && ! empty( $article['live_app_url'] ) ) : ?>
-    <a class="wiki-btn secondary" href="<?php echo esc_url( $article['live_app_url'] ); ?>"><?php esc_html_e( 'Open live', 'wordopedia' ); ?></a>
+<?php if ( ! $is_saved_view && ! empty( $article['saved_article']['view_url'] ) ) : ?>
+    <a class="wiki-btn" href="<?php echo esc_url( $article['saved_article']['view_url'] ); ?>"><?php esc_html_e( 'Open saved', 'wordopedia' ); ?></a>
 <?php endif; ?>
-<?php if ( ! empty( $article['source_url'] ) ) : ?>
+<?php if ( $is_saved_view && ! empty( $article['source_url'] ) ) : ?>
     <a class="wiki-btn secondary" href="<?php echo esc_url( $article['source_url'] ); ?>" target="_blank" rel="noreferrer"><?php esc_html_e( 'View on Wikipedia', 'wordopedia' ); ?></a>
 <?php endif; ?>
 <?php if ( current_user_can( 'edit_posts' ) ) : ?>
@@ -42,7 +42,9 @@ $is_saved_view = ! empty( $is_saved_view );
             <input type="hidden" name="page_id" value="<?php echo esc_attr( $article['page_id'] ); ?>">
             <input type="hidden" name="title" value="<?php echo esc_attr( $article['title'] ); ?>">
             <input type="hidden" name="language" value="<?php echo esc_attr( $article['language'] ); ?>">
-            <button class="wiki-btn" type="submit"><?php esc_html_e( 'Save article', 'wordopedia' ); ?></button>
+            <button class="wiki-btn" type="submit">
+                <?php echo esc_html( ! empty( $article['saved_article'] ) ? __( 'Update saved', 'wordopedia' ) : __( 'Save article', 'wordopedia' ) ); ?>
+            </button>
         </form>
     <?php endif; ?>
 <?php endif; ?>

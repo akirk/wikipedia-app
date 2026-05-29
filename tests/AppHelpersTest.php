@@ -89,6 +89,19 @@ class AppHelpersTest extends TestCase {
         $this->assertSame( 'https://example.test/wordopedia/saved', App::get_saved_articles_url() );
     }
 
+    public function test_group_articles_by_initial_sorts_titles_and_symbols_last(): void {
+        $groups = App::group_articles_by_initial( [
+            [ 'title' => 'Zebra' ],
+            [ 'title' => 'algebra' ],
+            [ 'title' => 'Apple' ],
+            [ 'title' => '123 History' ],
+        ] );
+
+        $this->assertSame( [ 'A', 'Z', '#' ], array_keys( $groups ) );
+        $this->assertSame( [ 'algebra', 'Apple' ], array_column( $groups['A'], 'title' ) );
+        $this->assertSame( [ '123 History' ], array_column( $groups['#'], 'title' ) );
+    }
+
     public function test_saved_snippets_url(): void {
         $this->assertSame( 'https://example.test/wordopedia/snippets', App::get_saved_snippets_url() );
     }

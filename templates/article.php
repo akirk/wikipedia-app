@@ -34,6 +34,12 @@ if ( $page_id || '' !== $title ) {
 
 $page_title = $article ? $article['title'] : __( 'Encyclopedia article', 'wordopedia' );
 $wiki_current_nav = 'search';
+if ( $article ) {
+    $wiki_article_actions = [
+        'article'       => $article,
+        'is_saved_view' => false,
+    ];
+}
 include __DIR__ . '/_header.php';
 ?>
 <?php

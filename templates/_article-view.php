@@ -11,38 +11,79 @@ $is_saved_view = ! empty( $is_saved_view );
 $snippets = $is_saved_view && ! empty( $article['snippets'] ) && is_array( $article['snippets'] ) ? $article['snippets'] : [];
 $can_save_snippets = current_user_can( 'edit_posts' ) && ( ! empty( $article['post_id'] ) || ! empty( $article['page_id'] ) );
 $snippet_count = count( $snippets );
-$saved_label = '';
+$article_version_statuses = [];
+$live_status_url = '';
+$live_status_external = false;
+
 if ( $is_saved_view ) {
-    $saved_date = ! empty( $article['last_saved_at_display'] ) ? $article['last_saved_at_display'] : App::format_datetime( $article['last_saved_at'] ?? '' );
-    $saved_label = $saved_date
+    $live_status_url = ! empty( $article['live_app_url'] ) ? (string) $article['live_app_url'] : '';
+} elseif ( ! empty( $article['source_url'] ) ) {
+    $live_status_url = (string) $article['source_url'];
+    $live_status_external = true;
+} elseif ( ! empty( $article['app_url'] ) ) {
+    $live_status_url = (string) $article['app_url'];
+}
+
+if ( ! $is_saved_view || $live_status_url ) {
+    $article_version_statuses[] = [
+        'key'      => 'live',
+        'label'    => __( 'Live Wikipedia', 'wordopedia' ),
+        'url'      => $live_status_url,
+        'current'  => ! $is_saved_view,
+        'external' => $live_status_external,
+    ];
+}
+
+$saved_status_article = $is_saved_view ? $article : ( is_array( $article['saved_article'] ?? null ) ? $article['saved_article'] : [] );
+if ( $saved_status_article ) {
+    $saved_date = ! empty( $saved_status_article['last_saved_at_display'] ) ? $saved_status_article['last_saved_at_display'] : App::format_datetime( $saved_status_article['last_saved_at'] ?? '' );
+    $saved_status_label = $saved_date
         ? sprintf(
             /* translators: %s: saved date */
-            __( 'Saved %s', 'wordopedia' ),
+            __( 'Saved version %s', 'wordopedia' ),
             $saved_date
         )
-        : __( 'Saved', 'wordopedia' );
+        : __( 'Saved version', 'wordopedia' );
+
+    $article_version_statuses[] = [
+        'key'         => 'saved',
+        'label'       => $saved_status_label,
+        'url'         => ! $is_saved_view && ! empty( $saved_status_article['view_url'] ) ? (string) $saved_status_article['view_url'] : '',
+        'current'     => $is_saved_view,
+        'can_refresh' => $is_saved_view && current_user_can( 'edit_posts' ) && ! empty( $article['post_id'] ),
+    ];
 }
 ?>
 <div class="wiki-page-head wiki-article-head">
     <div>
         <h1><?php echo esc_html( $article['title'] ?? '' ); ?></h1>
-        <p class="wiki-subtitle">
+        <div class="wiki-subtitle">
             <?php echo esc_html( ( $article['language_label'] ?? '' ) . ' (' . ( $article['language'] ?? '' ) . ')' ); ?>
-            <?php if ( $saved_label ) : ?>
-                <span class="wiki-saved-status">
-                    <span aria-hidden="true">✓</span>
-                    <?php echo esc_html( $saved_label ); ?>
-                    <?php if ( current_user_can( 'edit_posts' ) && ! empty( $article['post_id'] ) ) : ?>
-                        <form class="wiki-inline-form wiki-saved-refresh" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                            <?php wp_nonce_field( App::NONCE_REFETCH_ARTICLE . '_' . $article['post_id'] ); ?>
-                            <input type="hidden" name="action" value="wordopedia_refetch_article">
-                            <input type="hidden" name="post_id" value="<?php echo esc_attr( $article['post_id'] ); ?>">
-                            <button class="wiki-btn secondary wiki-mini-btn" type="submit"><?php esc_html_e( 'Refresh', 'wordopedia' ); ?></button>
-                        </form>
-                    <?php endif; ?>
-                </span>
-            <?php endif; ?>
-        </p>
+            <?php foreach ( $article_version_statuses as $version_status ) : ?>
+                <?php
+                $version_classes = 'wiki-version-status wiki-version-' . sanitize_html_class( $version_status['key'] ?? 'article' );
+                $version_classes .= ! empty( $version_status['current'] ) ? ' wiki-version-current' : ' wiki-version-link';
+                $version_label = (string) ( $version_status['label'] ?? '' );
+                $version_url = (string) ( $version_status['url'] ?? '' );
+                $version_external_attrs = ! empty( $version_status['external'] ) ? ' target="_blank" rel="noreferrer"' : '';
+                ?>
+                <?php if ( $version_url ) : ?>
+                    <a class="<?php echo esc_attr( $version_classes ); ?>" href="<?php echo esc_url( $version_url ); ?>"<?php echo $version_external_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static attribute fragment. ?>><?php echo esc_html( $version_label ); ?></a>
+                <?php else : ?>
+                    <span class="<?php echo esc_attr( $version_classes ); ?>">
+                        <?php echo esc_html( $version_label ); ?>
+                    </span>
+                <?php endif; ?>
+                <?php if ( ! empty( $version_status['can_refresh'] ) ) : ?>
+                    <form class="wiki-inline-form wiki-version-refresh" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                        <?php wp_nonce_field( App::NONCE_REFETCH_ARTICLE . '_' . $article['post_id'] ); ?>
+                        <input type="hidden" name="action" value="wordopedia_refetch_article">
+                        <input type="hidden" name="post_id" value="<?php echo esc_attr( $article['post_id'] ); ?>">
+                        <button class="wiki-btn secondary wiki-mini-btn" type="submit"><?php esc_html_e( 'Refresh', 'wordopedia' ); ?></button>
+                    </form>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
     </div>
 </div>
 

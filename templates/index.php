@@ -36,28 +36,7 @@ foreach ( $saved_posts as $saved_post ) {
     $saved_articles[] = App::format_saved_article( $saved_post );
 }
 
-$saved_articles_by_letter = [];
-foreach ( $saved_articles as $saved ) {
-    $title = trim( $saved['title'] );
-    $letter = function_exists( 'mb_substr' ) ? mb_substr( $title, 0, 1 ) : substr( $title, 0, 1 );
-    $letter = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $letter ) : strtoupper( $letter );
-    if ( '' === $letter || ! preg_match( '/[[:alpha:]]/u', $letter ) ) {
-        $letter = '#';
-    }
-    if ( ! isset( $saved_articles_by_letter[ $letter ] ) ) {
-        $saved_articles_by_letter[ $letter ] = [];
-    }
-    $saved_articles_by_letter[ $letter ][] = $saved;
-}
-uksort( $saved_articles_by_letter, function( $a, $b ) {
-    if ( '#' === $a ) {
-        return 1;
-    }
-    if ( '#' === $b ) {
-        return -1;
-    }
-    return strcasecmp( $a, $b );
-} );
+$saved_articles_by_letter = App::group_articles_by_initial( $saved_articles );
 
 $page_title = __( 'Wordopedia', 'wordopedia' );
 $wiki_current_nav = 'search';
@@ -136,40 +115,9 @@ include __DIR__ . '/_search-language-tabs.php';
         </div>
     </div>
 
-    <?php if ( $saved_articles_by_letter ) : ?>
-        <nav class="wiki-alpha-index" aria-label="<?php esc_attr_e( 'Saved article index', 'wordopedia' ); ?>">
-            <?php foreach ( array_keys( $saved_articles_by_letter ) as $letter ) : ?>
-                <?php $letter_id = '#' === $letter ? 'other' : sanitize_title( $letter ); ?>
-                <a class="wiki-chip" href="#saved-<?php echo esc_attr( $letter_id ); ?>"><?php echo esc_html( $letter ); ?></a>
-            <?php endforeach; ?>
-        </nav>
-
-        <?php foreach ( $saved_articles_by_letter as $letter => $group ) : ?>
-            <?php $letter_id = '#' === $letter ? 'other' : sanitize_title( $letter ); ?>
-            <section class="wiki-alpha-section" id="saved-<?php echo esc_attr( $letter_id ); ?>">
-                <h3 class="wiki-alpha-heading"><?php echo esc_html( $letter ); ?></h3>
-                <ul class="wiki-alpha-list">
-                    <?php foreach ( $group as $saved ) : ?>
-                        <li>
-                            <a href="<?php echo esc_url( $saved['view_url'] ); ?>">
-                                <span class="wiki-alpha-title"><?php echo esc_html( $saved['title'] ); ?></span>
-                                <span class="wiki-meta">
-                                    <span title="<?php echo esc_attr( $saved['language_label'] ); ?>" aria-label="<?php echo esc_attr( $saved['language_label'] . ' (' . $saved['language'] . ')' ); ?>"><?php echo esc_html( $saved['language'] ); ?></span>
-                                    <?php foreach ( $saved['lists'] as $list ) : ?>
-                                        <span><?php echo esc_html( $list['name'] ); ?></span>
-                                    <?php endforeach; ?>
-                                    <?php if ( ! empty( $saved['last_saved_at_display'] ) ) : ?>
-                                        <span title="<?php echo esc_attr( __( 'Last saved', 'wordopedia' ) . ' ' . $saved['last_saved_at_display'] ); ?>" aria-label="<?php echo esc_attr( __( 'Last saved', 'wordopedia' ) . ' ' . $saved['last_saved_at_display'] ); ?>"><?php echo esc_html( $saved['last_saved_at_display'] ); ?></span>
-                                    <?php endif; ?>
-                                </span>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </section>
-        <?php endforeach; ?>
-    <?php else : ?>
-        <div class="wiki-notice"><?php esc_html_e( 'No saved articles yet.', 'wordopedia' ); ?></div>
-    <?php endif; ?>
+    <?php
+    $wiki_saved_alpha_empty_message = __( 'No saved articles yet.', 'wordopedia' );
+    include __DIR__ . '/_saved-alpha-list.php';
+    ?>
 </section>
 <?php include __DIR__ . '/_footer.php'; ?>
