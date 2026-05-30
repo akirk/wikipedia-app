@@ -737,7 +737,7 @@ class App extends BaseApp {
         }
 
         return [
-            'article' => self::format_saved_article( $post, true ),
+            'article' => self::format_ability_article( self::format_saved_article( $post, true ) ),
         ];
     }
 
@@ -753,6 +753,24 @@ class App extends BaseApp {
         return [
             'article' => $saved,
         ];
+    }
+
+    private static function format_ability_article( array $article ): array {
+        if ( ! array_key_exists( 'html', $article ) && array_key_exists( 'content', $article ) ) {
+            $article['html'] = $article['content'];
+        }
+
+        unset( $article['content'] );
+
+        if ( isset( $article['snippets'] ) && is_array( $article['snippets'] ) ) {
+            foreach ( $article['snippets'] as $index => $snippet ) {
+                if ( is_array( $snippet ) ) {
+                    $article['snippets'][ $index ] = self::format_ability_snippet( $snippet );
+                }
+            }
+        }
+
+        return $article;
     }
 
     public function register_ai_assistant_ability_domains( array $domains ): array {
@@ -2175,7 +2193,7 @@ class App extends BaseApp {
         ];
 
         if ( $include_content ) {
-            $properties['content'] = [ 'type' => 'string' ];
+            $properties['html'] = [ 'type' => 'string' ];
             $properties['snippets'] = [
                 'type'  => 'array',
                 'items' => self::snippet_schema( true ),

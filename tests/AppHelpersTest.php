@@ -141,6 +141,45 @@ class AppHelpersTest extends TestCase {
         $this->assertStringContainsString( 'save the best result to Wordopedia', $tips['wordopedia'][0] );
     }
 
+    public function test_ability_article_payload_uses_html_without_raw_content(): void {
+        $article = [
+            'title'    => 'Example',
+            'content'  => '<p>Article body</p>',
+            'snippets' => [
+                [
+                    'post_id' => 123,
+                    'content' => '<!-- wp:paragraph --><p>Snippet body</p><!-- /wp:paragraph -->',
+                    'html'    => '<p>Snippet body</p>',
+                    'text'    => 'Snippet body',
+                ],
+            ],
+        ];
+
+        $formatted = $this->invokePrivateStatic( 'format_ability_article', [ $article ] );
+
+        $this->assertArrayNotHasKey( 'content', $formatted );
+        $this->assertSame( '<p>Article body</p>', $formatted['html'] );
+        $this->assertArrayNotHasKey( 'content', $formatted['snippets'][0] );
+        $this->assertSame( '<p>Snippet body</p>', $formatted['snippets'][0]['html'] );
+        $this->assertSame( 'Snippet body', $formatted['snippets'][0]['text'] );
+    }
+
+    public function test_ability_output_schemas_do_not_include_raw_content_duplicates(): void {
+        $article_schema = $this->invokePrivateStatic( 'saved_article_schema', [ true ] );
+        $article_properties = $article_schema['properties'];
+
+        $this->assertArrayHasKey( 'html', $article_properties );
+        $this->assertArrayHasKey( 'snippets', $article_properties );
+        $this->assertArrayNotHasKey( 'content', $article_properties );
+
+        $snippet_schema = $this->invokePrivateStatic( 'snippet_schema', [ true ] );
+        $snippet_properties = $snippet_schema['properties'];
+
+        $this->assertArrayHasKey( 'html', $snippet_properties );
+        $this->assertArrayHasKey( 'text', $snippet_properties );
+        $this->assertArrayNotHasKey( 'content', $snippet_properties );
+    }
+
     public function test_article_allowed_html_contains_expected_article_tags(): void {
         $allowed = App::article_allowed_html();
 
