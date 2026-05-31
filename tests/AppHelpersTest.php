@@ -123,10 +123,11 @@ class AppHelpersTest extends TestCase {
 
         $this->assertSame( [ 'Existing tip.' ], $tips['other'] );
         $this->assertArrayHasKey( 'wordopedia', $tips );
-        $this->assertCount( 2, $tips['wordopedia'] );
+        $this->assertCount( 3, $tips['wordopedia'] );
         $this->assertStringContainsString( 'search Wikipedia', $tips['wordopedia'][0] );
         $this->assertStringContainsString( 'extract specific facts', $tips['wordopedia'][1] );
         $this->assertStringContainsString( 'saved snippet', $tips['wordopedia'][1] );
+        $this->assertStringContainsString( 'SVG diagrams', $tips['wordopedia'][2] );
     }
 
     public function test_ai_assistant_welcome_tips_use_route_component_key_for_subroutes(): void {
@@ -172,12 +173,106 @@ class AppHelpersTest extends TestCase {
         $this->assertArrayHasKey( 'snippets', $article_properties );
         $this->assertArrayNotHasKey( 'content', $article_properties );
 
+        $media_schema = $this->invokePrivateStatic( 'media_file_schema', [] );
+        $media_properties = $media_schema['properties'];
+
+        $this->assertArrayHasKey( 'original_url', $media_properties );
+        $this->assertArrayHasKey( 'thumbnail_url', $media_properties );
+        $this->assertArrayHasKey( 'description_url', $media_properties );
+        $this->assertArrayHasKey( 'license', $media_properties );
+        $this->assertArrayHasKey( 'attribution', $media_properties );
+
         $snippet_schema = $this->invokePrivateStatic( 'snippet_schema', [ true ] );
         $snippet_properties = $snippet_schema['properties'];
 
         $this->assertArrayHasKey( 'html', $snippet_properties );
         $this->assertArrayHasKey( 'text', $snippet_properties );
         $this->assertArrayNotHasKey( 'content', $snippet_properties );
+    }
+
+    public function test_article_media_input_schema_supports_svg_filtering(): void {
+        $schema = $this->invokePrivateStatic( 'article_media_input_schema', [] );
+        $properties = $schema['properties'];
+
+        $this->assertArrayHasKey( 'page_id', $properties );
+        $this->assertArrayHasKey( 'title', $properties );
+        $this->assertArrayHasKey( 'mime', $properties );
+        $this->assertArrayHasKey( 'thumbnail_width', $properties );
+        $this->assertStringContainsString( 'image/svg+xml', $properties['mime']['description'] );
+        $this->assertFalse( $schema['additionalProperties'] );
+    }
+
+    public function test_media_file_title_normalization_accepts_urls_and_plain_names(): void {
+        $this->assertSame(
+            'File:Example logo.svg',
+            $this->invokePrivateStatic( 'normalize_media_file_title', [ 'https://commons.wikimedia.org/wiki/File:Example_logo.svg' ] )
+        );
+
+        $this->assertSame(
+            'File:Example diagram.svg',
+            $this->invokePrivateStatic( 'normalize_media_file_title', [ 'Example_diagram.svg' ] )
+        );
+
+        $this->assertSame(
+            'File:Old name.svg',
+            $this->invokePrivateStatic( 'normalize_media_file_title', [ 'Image:Old_name.svg#Preview' ] )
+        );
+    }
+
+    public function test_media_file_format_includes_svg_urls_and_plain_metadata(): void {
+        $file = $this->invokePrivateStatic( 'format_media_file_page', [
+            [
+                'pageid'          => 42,
+                'title'           => 'File:Example logo.svg',
+                'imagerepository' => 'shared',
+                'imageinfo'       => [
+                    [
+                        'canonicaltitle' => 'File:Example logo.svg',
+                        'url'            => 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Example_logo.svg',
+                        'thumburl'       => 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Example_logo.svg/512px-Example_logo.svg.png',
+                        'descriptionurl' => 'https://commons.wikimedia.org/wiki/File:Example_logo.svg',
+                        'width'          => 320,
+                        'height'         => 240,
+                        'size'           => 1234,
+                        'sha1'           => 'abc123',
+                        'mime'           => 'image/svg+xml',
+                        'mediatype'      => 'DRAWING',
+                        'extmetadata'    => [
+                            'ImageDescription' => [ 'value' => '<p>Example <strong>logo</strong></p>' ],
+                            'LicenseShortName' => [ 'value' => 'CC BY-SA 4.0' ],
+                            'LicenseUrl'       => [ 'value' => 'https://creativecommons.org/licenses/by-sa/4.0/' ],
+                            'Artist'           => [ 'value' => '<a href="/wiki/User:Example">Example Artist</a>' ],
+                            'Credit'           => [ 'value' => '<span>Own work</span>' ],
+                            'Attribution'      => [ 'value' => 'Example Artist' ],
+                            'Source'           => [ 'value' => 'Own work' ],
+                        ],
+                    ],
+                ],
+            ],
+        ] );
+
+        $this->assertSame( 42, $file['page_id'] );
+        $this->assertSame( 'File:Example logo.svg', $file['title'] );
+        $this->assertSame( 'Example logo.svg', $file['filename'] );
+        $this->assertSame( 'image/svg+xml', $file['mime'] );
+        $this->assertSame( 'DRAWING', $file['media_type'] );
+        $this->assertSame( 'shared', $file['repository'] );
+        $this->assertSame( 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Example_logo.svg', $file['original_url'] );
+        $this->assertSame( 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Example_logo.svg/512px-Example_logo.svg.png', $file['thumbnail_url'] );
+        $this->assertSame( 'https://commons.wikimedia.org/wiki/File:Example_logo.svg', $file['description_url'] );
+        $this->assertSame( 'Example logo', $file['description'] );
+        $this->assertSame( 'CC BY-SA 4.0', $file['license'] );
+        $this->assertSame( 'https://creativecommons.org/licenses/by-sa/4.0/', $file['license_url'] );
+        $this->assertSame( 'Example Artist', $file['artist'] );
+        $this->assertSame( 'Own work', $file['credit'] );
+        $this->assertSame( 'Example Artist', $file['attribution'] );
+        $this->assertSame( 'Own work', $file['source'] );
+    }
+
+    public function test_media_thumbnail_width_is_clamped(): void {
+        $this->assertSame( 64, $this->invokePrivateStatic( 'normalize_media_thumbnail_width', [ 1 ] ) );
+        $this->assertSame( 512, $this->invokePrivateStatic( 'normalize_media_thumbnail_width', [ 0 ] ) );
+        $this->assertSame( 2000, $this->invokePrivateStatic( 'normalize_media_thumbnail_width', [ 5000 ] ) );
     }
 
     public function test_article_allowed_html_contains_expected_article_tags(): void {

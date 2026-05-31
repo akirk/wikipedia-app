@@ -57,6 +57,22 @@ if ( ! function_exists( 'sanitize_text_field' ) ) {
     }
 }
 
+if ( ! function_exists( 'get_option' ) ) {
+    function get_option( $option, $default = false ) {
+        if ( 'blog_charset' === $option ) {
+            return 'UTF-8';
+        }
+
+        return $default;
+    }
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+    function wp_strip_all_tags( $text ) {
+        return strip_tags( (string) $text );
+    }
+}
+
 if ( ! function_exists( 'wp_json_encode' ) ) {
     function wp_json_encode( $data, $options = 0, $depth = 512 ) {
         return json_encode( $data, $options, $depth );
