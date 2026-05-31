@@ -676,6 +676,317 @@
         });
     });
 
+    document.querySelectorAll('[data-wiki-image-download-open]').forEach(function (button) {
+        var dialog = null;
+
+        function dataText(name, fallback) {
+            return button.getAttribute(name) || fallback;
+        }
+
+        function normalizeImageUrl(value) {
+            value = String(value || '').trim();
+            if (0 === value.indexOf('//')) {
+                value = 'https:' + value;
+            }
+
+            try {
+                var url = new URL(value, window.location.href);
+                return /^https?:$/.test(url.protocol) ? url.href : '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function imageHost(url) {
+            try {
+                return new URL(url).host;
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function imageFilename(url) {
+            try {
+                var path = new URL(url).pathname;
+                var name = path ? path.split('/').pop() : '';
+                return name ? decodeURIComponent(name) : '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function isLocalUrl(url) {
+            return imageHost(url) === window.location.host;
+        }
+
+        function isVisibleArticleImage(image) {
+            var node = image;
+            if (!image || !image.isConnected || image.closest('[hidden], [aria-hidden="true"], .mw-editsection, .noprint, .metadata, .ambox')) {
+                return false;
+            }
+
+            while (node && 1 === node.nodeType) {
+                var style = window.getComputedStyle ? window.getComputedStyle(node) : null;
+                if (style && ('none' === style.display || 'hidden' === style.visibility)) {
+                    return false;
+                }
+                node = node.parentElement;
+            }
+
+            return true;
+        }
+
+        function collectArticleImages() {
+            var article = document.querySelector('.wiki-article');
+            var seen = {};
+            var fallbackLabel = dataText('data-article-image-text', 'Article image');
+            var images = [];
+
+            if (!article) {
+                return images;
+            }
+
+            article.querySelectorAll('img').forEach(function (image) {
+                var url = normalizeImageUrl(image.getAttribute('src') || image.src || image.currentSrc);
+                var label;
+
+                if (!url || seen[url] || !isVisibleArticleImage(image)) {
+                    return;
+                }
+
+                seen[url] = true;
+                label = image.getAttribute('alt') || image.getAttribute('title') || imageFilename(url) || fallbackLabel;
+                images.push({
+                    url: url,
+                    label: label,
+                    host: imageHost(url),
+                    isLocal: isLocalUrl(url)
+                });
+            });
+
+            return images;
+        }
+
+        function formatImageCount(count) {
+            return dataText('data-remote-images-label', 'Remote images') + ': ' + String(count);
+        }
+
+        function hiddenInput(name, value) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value || '';
+            return input;
+        }
+
+        function closeDialog() {
+            if (!dialog) {
+                return;
+            }
+
+            if (dialog.close && dialog.open) {
+                dialog.close();
+            }
+            dialog.hidden = true;
+            dialog.classList.remove('is-open');
+        }
+
+        function openDialog() {
+            if (!dialog) {
+                return;
+            }
+
+            dialog.hidden = false;
+            if (dialog.showModal) {
+                dialog.showModal();
+            } else {
+                dialog.classList.add('is-open');
+            }
+        }
+
+        function updateSubmit(form, submit) {
+            if (submit) {
+                submit.disabled = !form.querySelector('input[name="image_urls[]"]:not(:disabled):checked');
+            }
+        }
+
+        function createButton(className, text, type) {
+            var element = document.createElement('button');
+            element.className = className;
+            element.type = type || 'button';
+            element.textContent = text;
+            return element;
+        }
+
+        function createDialog(images) {
+            var remoteCount = images.filter(function (image) {
+                return !image.isLocal;
+            }).length;
+            var titleId = 'wiki-image-download-title';
+            var nextDialog = document.createElement('dialog');
+            var form = document.createElement('form');
+            var head = document.createElement('div');
+            var titleGroup = document.createElement('div');
+            var title = document.createElement('h2');
+            var info = document.createElement('p');
+            var close = createButton('wiki-btn secondary wiki-icon-btn', '\u00d7');
+            var toolbar = document.createElement('div');
+            var count = document.createElement('span');
+            var tools = document.createElement('div');
+            var selectAll = createButton('wiki-btn secondary', dataText('data-select-all-text', 'Select all'));
+            var selectNone = createButton('wiki-btn secondary', dataText('data-select-none-text', 'Select none'));
+            var list = document.createElement('ol');
+            var actions = document.createElement('div');
+            var cancel = createButton('wiki-btn secondary', dataText('data-cancel-text', 'Cancel'));
+            var submit = createButton('wiki-btn', dataText('data-download-selected-text', 'Download selected'), 'submit');
+
+            nextDialog.className = 'wiki-image-dialog';
+            nextDialog.id = 'wiki-image-download-dialog';
+            nextDialog.hidden = true;
+            nextDialog.setAttribute('aria-labelledby', titleId);
+
+            form.className = 'wiki-image-form';
+            form.method = 'post';
+            form.action = button.getAttribute('data-action-url') || '';
+            form.setAttribute('data-wiki-image-form', '');
+            form.appendChild(hiddenInput('action', button.getAttribute('data-action-name') || 'wordopedia_sideload_article_images'));
+            form.appendChild(hiddenInput('_wpnonce', button.getAttribute('data-nonce') || ''));
+            form.appendChild(hiddenInput('post_id', button.getAttribute('data-post-id') || ''));
+
+            head.className = 'wiki-dialog-head';
+            titleGroup.className = 'wiki-dialog-title';
+            title.id = titleId;
+            title.textContent = dataText('data-title', 'Download images');
+            info.className = 'wiki-image-info';
+            info.textContent = dataText('data-info-text', 'After downloading, selected images will be loaded from your media library.');
+            close.setAttribute('aria-label', dataText('data-close-text', 'Close'));
+            close.innerHTML = '&times;';
+            close.addEventListener('click', closeDialog);
+            titleGroup.appendChild(title);
+            titleGroup.appendChild(info);
+            head.appendChild(titleGroup);
+            head.appendChild(close);
+            form.appendChild(head);
+
+            toolbar.className = 'wiki-image-toolbar';
+            count.className = 'wiki-meta';
+            count.textContent = formatImageCount(remoteCount);
+            tools.className = 'wiki-image-selection-tools';
+            selectAll.addEventListener('click', function () {
+                form.querySelectorAll('input[name="image_urls[]"]:not(:disabled)').forEach(function (checkbox) {
+                    checkbox.checked = true;
+                });
+                updateSubmit(form, submit);
+            });
+            selectNone.addEventListener('click', function () {
+                form.querySelectorAll('input[name="image_urls[]"]:not(:disabled)').forEach(function (checkbox) {
+                    checkbox.checked = false;
+                });
+                updateSubmit(form, submit);
+            });
+            tools.appendChild(selectAll);
+            tools.appendChild(selectNone);
+            toolbar.appendChild(count);
+            toolbar.appendChild(tools);
+            form.appendChild(toolbar);
+
+            list.className = 'wiki-image-list';
+            if (!images.length) {
+                var empty = document.createElement('li');
+                var notice = document.createElement('div');
+                notice.className = 'wiki-notice';
+                notice.textContent = dataText('data-no-images-text', 'No article images found.');
+                empty.appendChild(notice);
+                list.appendChild(empty);
+            }
+
+            images.forEach(function (image, index) {
+                var item = document.createElement('li');
+                var label = document.createElement('label');
+                var checkbox = document.createElement('input');
+                var thumb = document.createElement('span');
+                var preview = document.createElement('img');
+                var details = document.createElement('span');
+                var titleText = document.createElement('span');
+                var meta = document.createElement('span');
+                var inputId = 'wiki-image-choice-' + index;
+
+                label.className = 'wiki-image-choice' + (image.isLocal ? ' is-local' : '');
+                label.setAttribute('for', inputId);
+                checkbox.id = inputId;
+                checkbox.type = 'checkbox';
+                checkbox.name = 'image_urls[]';
+                checkbox.value = image.url;
+                checkbox.disabled = image.isLocal;
+                checkbox.checked = !image.isLocal;
+                thumb.className = 'wiki-image-thumb';
+                preview.src = image.url;
+                preview.alt = '';
+                preview.loading = 'lazy';
+                details.className = 'wiki-image-details';
+                titleText.className = 'wiki-image-title';
+                titleText.textContent = image.label;
+                meta.className = 'wiki-meta';
+                meta.textContent = image.isLocal ? dataText('data-already-local-text', 'Already local') : image.host;
+
+                thumb.appendChild(preview);
+                details.appendChild(titleText);
+                details.appendChild(meta);
+                label.appendChild(checkbox);
+                label.appendChild(thumb);
+                label.appendChild(details);
+                item.appendChild(label);
+                list.appendChild(item);
+            });
+            form.appendChild(list);
+
+            actions.className = 'wiki-dialog-actions';
+            cancel.addEventListener('click', closeDialog);
+            actions.appendChild(cancel);
+            actions.appendChild(submit);
+            form.appendChild(actions);
+            form.addEventListener('change', function (event) {
+                if (event.target && 'image_urls[]' === event.target.name) {
+                    updateSubmit(form, submit);
+                }
+            });
+            updateSubmit(form, submit);
+
+            nextDialog.appendChild(form);
+            nextDialog.addEventListener('cancel', function () {
+                window.setTimeout(function () {
+                    nextDialog.hidden = true;
+                }, 0);
+            });
+            nextDialog.addEventListener('close', function () {
+                nextDialog.hidden = true;
+            });
+            nextDialog.addEventListener('click', function (event) {
+                if (event.target === nextDialog) {
+                    closeDialog();
+                }
+            });
+
+            return nextDialog;
+        }
+
+        button.addEventListener('click', function () {
+            if (dialog && dialog.parentNode) {
+                dialog.parentNode.removeChild(dialog);
+            }
+
+            dialog = createDialog(collectArticleImages());
+            document.body.appendChild(dialog);
+            openDialog();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if ('Escape' === event.key && dialog && !dialog.hidden && !dialog.open) {
+                closeDialog();
+            }
+        });
+    });
+
     if (!window.fetch || !window.URLSearchParams) {
         return;
     }

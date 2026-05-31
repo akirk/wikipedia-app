@@ -372,6 +372,46 @@ class AppHelpersTest extends TestCase {
         $this->assertStringContainsString( 'Article body', $cleaned );
     }
 
+    public function test_article_images_from_html_extracts_unique_sources(): void {
+        $html = '<p><img src="//upload.wikimedia.org/example-a.jpg" alt="Example A" width="120" height="80" srcset="//upload.wikimedia.org/example-a-2x.jpg 2x"><img src="//upload.wikimedia.org/example-a.jpg" alt="Duplicate"><img src="https://example.test/wp-content/uploads/local.jpg" alt=""></p>';
+
+        $images = App::article_images_from_html( $html );
+
+        $this->assertCount( 2, $images );
+        $this->assertSame( 'https://upload.wikimedia.org/example-a.jpg', $images[0]['url'] );
+        $this->assertSame( 'Example A', $images[0]['label'] );
+        $this->assertSame( 120, $images[0]['width'] );
+        $this->assertFalse( $images[0]['is_local'] );
+        $this->assertSame( 'https://example.test/wp-content/uploads/local.jpg', $images[1]['url'] );
+        $this->assertTrue( $images[1]['is_local'] );
+    }
+
+    public function test_article_images_from_html_skips_hidden_utility_images(): void {
+        $html = '<div class="metadata"><img src="//upload.wikimedia.org/hidden-metadata.png" alt="Hidden"></div><div class="noprint"><img src="//upload.wikimedia.org/hidden-print.png" alt="Hidden"></div><p><img src="//upload.wikimedia.org/visible.jpg" alt="Visible"></p>';
+
+        $images = App::article_images_from_html( $html );
+
+        $this->assertCount( 1, $images );
+        $this->assertSame( 'https://upload.wikimedia.org/visible.jpg', $images[0]['url'] );
+    }
+
+    public function test_article_image_rewrite_replaces_selected_src_and_removes_srcset(): void {
+        $html = '<figure><img src="//upload.wikimedia.org/example-a.jpg" alt="A" srcset="//upload.wikimedia.org/example-a.jpg 1x, //upload.wikimedia.org/example-a-2x.jpg 2x" sizes="100vw"><img src="//upload.wikimedia.org/example-b.jpg" alt="B" srcset="//upload.wikimedia.org/example-b-2x.jpg 2x"></figure>';
+
+        $rewritten = $this->invokePrivateStatic( 'rewrite_article_image_urls', [
+            $html,
+            [
+                'https://upload.wikimedia.org/example-a.jpg' => 'https://example.test/wp-content/uploads/example-a.jpg',
+            ],
+        ] );
+
+        $this->assertStringContainsString( 'src="https://example.test/wp-content/uploads/example-a.jpg"', $rewritten );
+        $this->assertStringNotContainsString( 'example-a-2x.jpg', $rewritten );
+        $this->assertStringNotContainsString( 'sizes="100vw"', $rewritten );
+        $this->assertStringContainsString( 'example-b.jpg', $rewritten );
+        $this->assertStringContainsString( 'example-b-2x.jpg', $rewritten );
+    }
+
     public function test_wordopedia_request_headers_identify_normal_wordpress_sites(): void {
         $headers = $this->invokePrivateStatic( 'wordopedia_request_headers', [] );
         $user_agent = $this->invokePrivateStatic( 'wordopedia_user_agent', [] );
