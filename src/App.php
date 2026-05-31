@@ -36,6 +36,7 @@ class App extends BaseApp {
     const WORDOPEDIA_CACHE_SEARCH   = 300;
     const WORDOPEDIA_CACHE_ARTICLE  = 3600;
     const WORDOPEDIA_CACHE_LANGUAGE = 86400;
+    const WORDOPEDIA_CACHE_MEDIA    = 3600;
 
     public function __construct() {
         $this->app = new WpApp( $this->get_template_dir(), $this->get_url_path(), [
@@ -371,7 +372,7 @@ class App extends BaseApp {
 
         wp_register_ability_category( 'wordopedia', [
             'label'       => __( 'Wordopedia', 'wordopedia' ),
-            'description' => __( 'Search, browse, save, refetch, and annotate Wikipedia articles.', 'wordopedia' ),
+            'description' => __( 'Search, browse, inspect media, save, refetch, and annotate Wikipedia articles.', 'wordopedia' ),
         ] );
     }
 
@@ -433,6 +434,48 @@ class App extends BaseApp {
                 'show_in_rest' => true,
                 'annotations' => [
                     'instructions' => 'If both page_id and title are present, page_id is authoritative. Present app_url for reading inside the app.',
+                    'readonly'     => true,
+                    'destructive'  => false,
+                    'idempotent'   => true,
+                ],
+            ],
+        ] );
+
+        wp_register_ability( 'wordopedia/list-article-media', [
+            'label'               => __( 'List Wikipedia Article Media', 'wordopedia' ),
+            'description'         => 'List media files used by a Wikipedia article, including SVG files.',
+            'category'            => 'wordopedia',
+            'input_schema'        => self::article_media_input_schema(),
+            'output_schema'       => self::article_media_output_schema(),
+            'execute_callback'    => [ $this, 'ability_list_article_media' ],
+            'permission_callback' => function() {
+                return current_user_can( 'read' );
+            },
+            'meta'                => [
+                'show_in_rest' => true,
+                'annotations' => [
+                    'instructions' => 'Use mime=image/svg+xml to find SVGs. Present original_url for the SVG file, thumbnail_url for preview, and description_url plus license/attribution fields for reuse.',
+                    'readonly'     => true,
+                    'destructive'  => false,
+                    'idempotent'   => true,
+                ],
+            ],
+        ] );
+
+        wp_register_ability( 'wordopedia/get-media-file', [
+            'label'               => __( 'Get Wikipedia Media File', 'wordopedia' ),
+            'description'         => 'Get metadata and URLs for a Wikipedia or Wikimedia Commons media file.',
+            'category'            => 'wordopedia',
+            'input_schema'        => self::media_file_lookup_input_schema(),
+            'output_schema'       => self::media_file_output_schema(),
+            'execute_callback'    => [ $this, 'ability_get_media_file' ],
+            'permission_callback' => function() {
+                return current_user_can( 'read' );
+            },
+            'meta'                => [
+                'show_in_rest' => true,
+                'annotations' => [
+                    'instructions' => 'Present original_url, thumbnail_url, description_url, license, attribution, artist, and source. Prefer description_url when the user needs reuse details.',
                     'readonly'     => true,
                     'destructive'  => false,
                     'idempotent'   => true,
@@ -715,6 +758,30 @@ class App extends BaseApp {
         ];
     }
 
+    public function ability_list_article_media( $input ) {
+        $input = is_array( $input ) ? $input : [];
+        $media = self::fetch_wordopedia_article_media( $input );
+
+        if ( is_wp_error( $media ) ) {
+            return $media;
+        }
+
+        return $media;
+    }
+
+    public function ability_get_media_file( $input ) {
+        $input = is_array( $input ) ? $input : [];
+        $file = self::fetch_wordopedia_media_file( $input );
+
+        if ( is_wp_error( $file ) ) {
+            return $file;
+        }
+
+        return [
+            'file' => $file,
+        ];
+    }
+
     public function ability_list_saved_articles( $input ): array {
         $input    = is_array( $input ) ? $input : [];
         $search   = isset( $input['search'] ) ? sanitize_text_field( $input['search'] ) : '';
@@ -774,7 +841,7 @@ class App extends BaseApp {
     }
 
     public function register_ai_assistant_ability_domains( array $domains ): array {
-        $domains['wordopedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article, saved snippets, article annotations, selected text snippets';
+        $domains['wordopedia'] = 'Wikipedia, wiki search, encyclopedia browsing, article language versions, article media files, SVG files from articles, Wikimedia Commons files, saved Wikipedia sources, saved article lists, local article source, refetch Wikipedia article, saved snippets, article annotations, selected text snippets';
         return $domains;
     }
 
@@ -782,6 +849,7 @@ class App extends BaseApp {
         $tips['wordopedia'] = [
             __( 'Ask me to search Wikipedia, compare article language versions, or save the best result to Wordopedia.', 'wordopedia' ),
             __( 'Ask me to extract specific facts from an article table into a clean saved snippet, such as a simple list.', 'wordopedia' ),
+            __( 'Ask me to find SVG diagrams or logos used by a Wikipedia article, including preview and attribution links.', 'wordopedia' ),
         ];
 
         return $tips;
@@ -810,6 +878,14 @@ class App extends BaseApp {
 
         if ( in_array( $ability_id, [ 'wordopedia/get-article', 'wordopedia/get-saved-article' ], true ) ) {
             return __( 'Summarize the article briefly, link app_url or view_url when present, and include source_url when citing Wikipedia.', 'wordopedia' );
+        }
+
+        if ( 'wordopedia/list-article-media' === $ability_id ) {
+            return __( 'Present media files as concise choices with title, original_url, thumbnail_url, description_url, license, and attribution. For SVG requests, prefer original_url for the actual SVG and thumbnail_url for preview.', 'wordopedia' );
+        }
+
+        if ( 'wordopedia/get-media-file' === $ability_id ) {
+            return __( 'Present the media file title, original_url, thumbnail_url, description_url, license, attribution, artist, and source. Mention description_url for reuse or licensing details.', 'wordopedia' );
         }
 
         return $instructions;
@@ -1034,6 +1110,390 @@ class App extends BaseApp {
         }
 
         return self::sanitize_article_html( $html, $language );
+    }
+
+    public static function fetch_wordopedia_article_media( array $input ) {
+        $language = isset( $input['language'] ) ? sanitize_text_field( $input['language'] ) : self::get_default_language();
+        $language = self::normalize_language( $language );
+        if ( is_wp_error( $language ) ) {
+            return $language;
+        }
+
+        $page_id = isset( $input['page_id'] ) ? absint( $input['page_id'] ) : 0;
+        $title   = isset( $input['title'] ) ? trim( wp_strip_all_tags( $input['title'] ) ) : '';
+
+        if ( ! $page_id && '' === $title ) {
+            return new \WP_Error( 'wordopedia_missing_article', __( 'Provide a Wikipedia page ID or title.', 'wordopedia' ) );
+        }
+
+        $mime            = isset( $input['mime'] ) ? strtolower( trim( sanitize_text_field( $input['mime'] ) ) ) : '';
+        $limit           = isset( $input['limit'] ) ? absint( $input['limit'] ) : 20;
+        $limit           = max( 1, min( 50, $limit ) );
+        $thumbnail_width = self::normalize_media_thumbnail_width( $input['thumbnail_width'] ?? 512 );
+        $force_refresh   = ! empty( $input['force_refresh'] );
+        $candidate_limit = self::article_media_candidate_limit( $mime, $limit );
+
+        $article_media = self::fetch_article_media_titles( $language, $page_id, $title, $candidate_limit, $force_refresh );
+        if ( is_wp_error( $article_media ) ) {
+            return $article_media;
+        }
+
+        $file_titles = $article_media['file_titles'];
+        if ( '' !== $mime ) {
+            $file_titles = array_values( array_filter( $file_titles, function( $file_title ) use ( $mime ) {
+                return self::media_title_matches_mime_hint( $file_title, $mime );
+            } ) );
+        }
+
+        if ( '' === $mime ) {
+            $file_titles = array_slice( $file_titles, 0, $limit );
+        } elseif ( 'image/svg+xml' === $mime ) {
+            $file_titles = array_slice( $file_titles, 0, $limit );
+        }
+
+        $media = [];
+        if ( $file_titles ) {
+            $media = self::fetch_media_files( $language, $file_titles, $thumbnail_width, $force_refresh );
+            if ( is_wp_error( $media ) ) {
+                return $media;
+            }
+        }
+
+        if ( '' !== $mime ) {
+            $media = array_values( array_filter( $media, function( $file ) use ( $mime ) {
+                return isset( $file['mime'] ) && strtolower( (string) $file['mime'] ) === $mime;
+            } ) );
+        }
+
+        $media = array_slice( $media, 0, $limit );
+
+        return [
+            'article'          => $article_media['article'],
+            'mime_filter'      => $mime,
+            'count'            => count( $media ),
+            'total_candidates' => count( $article_media['file_titles'] ),
+            'more_available'   => ! empty( $article_media['more_available'] ),
+            'media'            => $media,
+        ];
+    }
+
+    public static function fetch_wordopedia_media_file( array $input ) {
+        $language = isset( $input['language'] ) ? sanitize_text_field( $input['language'] ) : self::get_default_language();
+        $language = self::normalize_language( $language );
+        if ( is_wp_error( $language ) ) {
+            return $language;
+        }
+
+        $file_title = isset( $input['file_title'] ) ? self::normalize_media_file_title( (string) $input['file_title'] ) : '';
+        if ( '' === $file_title ) {
+            return new \WP_Error( 'wordopedia_missing_media_file', __( 'Provide a Wikimedia file title, such as File:Example.svg.', 'wordopedia' ) );
+        }
+
+        $thumbnail_width = self::normalize_media_thumbnail_width( $input['thumbnail_width'] ?? 512 );
+        $force_refresh   = ! empty( $input['force_refresh'] );
+        $files           = self::fetch_media_files( $language, [ $file_title ], $thumbnail_width, $force_refresh );
+
+        if ( is_wp_error( $files ) ) {
+            return $files;
+        }
+
+        if ( ! $files ) {
+            return new \WP_Error( 'wordopedia_media_file_not_found', __( 'Wikipedia media file not found.', 'wordopedia' ) );
+        }
+
+        return $files[0];
+    }
+
+    private static function fetch_article_media_titles( string $language, int $page_id, string $title, int $max_titles = 500, bool $force_refresh = false ) {
+        $max_titles = max( 1, min( 500, absint( $max_titles ) ) );
+        $file_titles = [];
+        $seen_titles = [];
+        $article = null;
+        $imcontinue = '';
+        $more_available = false;
+
+        do {
+            $args = [
+                'action'        => 'query',
+                'prop'          => 'images|info',
+                'imlimit'       => min( 500, max( 1, $max_titles - count( $file_titles ) ) ),
+                'inprop'        => 'url',
+                'redirects'     => 1,
+                'formatversion' => 2,
+                'utf8'          => 1,
+            ];
+
+            if ( $page_id ) {
+                $args['pageids'] = $page_id;
+            } else {
+                $args['titles'] = $title;
+            }
+
+            if ( '' !== $imcontinue ) {
+                $args['imcontinue'] = $imcontinue;
+            }
+
+            $data = self::request_wikipedia( $language, $args, self::WORDOPEDIA_CACHE_MEDIA, $force_refresh );
+            if ( is_wp_error( $data ) ) {
+                return $data;
+            }
+
+            $pages = $data['query']['pages'] ?? [];
+            $page  = is_array( $pages ) ? reset( $pages ) : null;
+
+            if ( ! is_array( $page ) || isset( $page['missing'] ) ) {
+                return new \WP_Error( 'wordopedia_article_not_found', __( 'Wikipedia article not found.', 'wordopedia' ) );
+            }
+
+            if ( null === $article ) {
+                $article_page_id = isset( $page['pageid'] ) ? absint( $page['pageid'] ) : $page_id;
+                $article_title   = isset( $page['title'] ) ? wp_strip_all_tags( $page['title'] ) : $title;
+                $source_url      = $page['canonicalurl'] ?? ( $page['fullurl'] ?? self::wikipedia_page_url( $language, $article_title, $article_page_id ) );
+
+                $article = [
+                    'page_id'        => $article_page_id,
+                    'title'          => $article_title,
+                    'language'       => $language,
+                    'language_label' => self::get_language_label( $language ),
+                    'source_url'     => esc_url_raw( $source_url ),
+                    'app_url'        => self::get_article_url( $language, $article_title, $article_page_id ),
+                ];
+            }
+
+            foreach ( $page['images'] ?? [] as $image ) {
+                if ( ! is_array( $image ) || empty( $image['title'] ) ) {
+                    continue;
+                }
+
+                $file_title = self::normalize_media_file_title( (string) $image['title'] );
+                $key = strtolower( $file_title );
+                if ( '' === $file_title || isset( $seen_titles[ $key ] ) ) {
+                    continue;
+                }
+
+                $seen_titles[ $key ] = true;
+                $file_titles[] = $file_title;
+                if ( count( $file_titles ) >= $max_titles ) {
+                    break;
+                }
+            }
+
+            $imcontinue = isset( $data['continue']['imcontinue'] ) ? sanitize_text_field( $data['continue']['imcontinue'] ) : '';
+            $more_available = '' !== $imcontinue;
+        } while ( $imcontinue && count( $file_titles ) < $max_titles );
+
+        return [
+            'article'        => $article ?: [
+                'page_id'        => $page_id,
+                'title'          => $title,
+                'language'       => $language,
+                'language_label' => self::get_language_label( $language ),
+                'source_url'     => self::wikipedia_page_url( $language, $title, $page_id ),
+                'app_url'        => self::get_article_url( $language, $title, $page_id ),
+            ],
+            'file_titles'    => $file_titles,
+            'more_available' => $more_available,
+        ];
+    }
+
+    private static function fetch_media_files( string $language, array $file_titles, int $thumbnail_width = 512, bool $force_refresh = false ) {
+        $thumbnail_width = self::normalize_media_thumbnail_width( $thumbnail_width );
+        $normalized_titles = [];
+
+        foreach ( $file_titles as $file_title ) {
+            if ( ! is_scalar( $file_title ) ) {
+                continue;
+            }
+
+            $file_title = self::normalize_media_file_title( (string) $file_title );
+            if ( '' !== $file_title && ! in_array( $file_title, $normalized_titles, true ) ) {
+                $normalized_titles[] = $file_title;
+            }
+        }
+
+        if ( ! $normalized_titles ) {
+            return [];
+        }
+
+        $files = [];
+        foreach ( array_chunk( $normalized_titles, 50 ) as $chunk ) {
+            $data = self::request_wikipedia( $language, [
+                'action'                 => 'query',
+                'prop'                   => 'imageinfo',
+                'titles'                 => implode( '|', $chunk ),
+                'iiprop'                 => 'canonicaltitle|url|size|mime|mediatype|sha1|extmetadata',
+                'iiurlwidth'             => $thumbnail_width,
+                'iiextmetadatalanguage'  => $language,
+                'iiextmetadatafilter'    => implode( '|', self::media_extmetadata_keys() ),
+                'iimetadataversion'      => 'latest',
+                'formatversion'          => 2,
+                'utf8'                   => 1,
+            ], self::WORDOPEDIA_CACHE_MEDIA, $force_refresh );
+
+            if ( is_wp_error( $data ) ) {
+                return $data;
+            }
+
+            foreach ( $data['query']['pages'] ?? [] as $page ) {
+                if ( ! is_array( $page ) || isset( $page['missing'] ) ) {
+                    continue;
+                }
+
+                $file = self::format_media_file_page( $page );
+                if ( $file ) {
+                    $files[] = $file;
+                }
+            }
+        }
+
+        return $files;
+    }
+
+    private static function format_media_file_page( array $page ): array {
+        $image_info = $page['imageinfo'][0] ?? null;
+        if ( ! is_array( $image_info ) ) {
+            return [];
+        }
+
+        $title = isset( $image_info['canonicaltitle'] ) ? (string) $image_info['canonicaltitle'] : (string) ( $page['title'] ?? '' );
+        $title = self::normalize_media_file_title( $title );
+        if ( '' === $title ) {
+            return [];
+        }
+
+        $metadata = self::format_media_extmetadata( isset( $image_info['extmetadata'] ) && is_array( $image_info['extmetadata'] ) ? $image_info['extmetadata'] : [] );
+
+        return [
+            'page_id'         => isset( $page['pageid'] ) ? absint( $page['pageid'] ) : 0,
+            'title'           => $title,
+            'filename'        => self::media_filename_from_title( $title ),
+            'canonical_title' => isset( $image_info['canonicaltitle'] ) ? sanitize_text_field( $image_info['canonicaltitle'] ) : $title,
+            'mime'            => isset( $image_info['mime'] ) ? sanitize_text_field( $image_info['mime'] ) : '',
+            'media_type'      => isset( $image_info['mediatype'] ) ? sanitize_text_field( $image_info['mediatype'] ) : '',
+            'repository'      => isset( $page['imagerepository'] ) ? sanitize_text_field( $page['imagerepository'] ) : '',
+            'original_url'    => isset( $image_info['url'] ) ? esc_url_raw( $image_info['url'] ) : '',
+            'thumbnail_url'   => isset( $image_info['thumburl'] ) ? esc_url_raw( $image_info['thumburl'] ) : '',
+            'description_url' => isset( $image_info['descriptionurl'] ) ? esc_url_raw( $image_info['descriptionurl'] ) : '',
+            'width'           => isset( $image_info['width'] ) ? absint( $image_info['width'] ) : 0,
+            'height'          => isset( $image_info['height'] ) ? absint( $image_info['height'] ) : 0,
+            'size'            => isset( $image_info['size'] ) ? absint( $image_info['size'] ) : 0,
+            'sha1'            => isset( $image_info['sha1'] ) ? sanitize_text_field( $image_info['sha1'] ) : '',
+            'description'     => $metadata['ImageDescription'] ?? ( $metadata['ObjectName'] ?? '' ),
+            'license'         => $metadata['LicenseShortName'] ?? ( $metadata['UsageTerms'] ?? ( $metadata['License'] ?? '' ) ),
+            'license_url'     => isset( $metadata['LicenseUrl'] ) ? esc_url_raw( $metadata['LicenseUrl'] ) : '',
+            'usage_terms'     => $metadata['UsageTerms'] ?? '',
+            'artist'          => $metadata['Artist'] ?? '',
+            'credit'          => $metadata['Credit'] ?? '',
+            'attribution'     => $metadata['Attribution'] ?? '',
+            'source'          => $metadata['Source'] ?? '',
+            'metadata'        => $metadata,
+        ];
+    }
+
+    private static function format_media_extmetadata( array $extmetadata ): array {
+        $metadata = [];
+
+        foreach ( $extmetadata as $key => $item ) {
+            if ( ! is_string( $key ) || ! is_array( $item ) || ! array_key_exists( 'value', $item ) || ! is_scalar( $item['value'] ) ) {
+                continue;
+            }
+
+            $value = self::plain_text( (string) $item['value'] );
+            if ( '' === $value ) {
+                continue;
+            }
+
+            $metadata[ $key ] = $value;
+        }
+
+        return $metadata;
+    }
+
+    private static function normalize_media_file_title( string $file_title ): string {
+        $file_title = trim( html_entity_decode( wp_strip_all_tags( $file_title ), ENT_QUOTES, 'UTF-8' ) );
+        if ( '' === $file_title ) {
+            return '';
+        }
+
+        if ( preg_match( '~^https?://~i', $file_title ) ) {
+            $parts = wp_parse_url( $file_title );
+            if ( ! is_array( $parts ) || empty( $parts['path'] ) || strpos( $parts['path'], '/wiki/' ) !== 0 ) {
+                return '';
+            }
+
+            $file_title = substr( $parts['path'], 6 );
+        }
+
+        if ( strpos( $file_title, '/wiki/' ) === 0 ) {
+            $file_title = substr( $file_title, 6 );
+        }
+
+        $file_title = strtok( $file_title, '#' );
+        $file_title = is_string( $file_title ) ? $file_title : '';
+        $file_title = rawurldecode( $file_title );
+        $file_title = str_replace( '_', ' ', $file_title );
+        $file_title = preg_replace( '/\s+/', ' ', $file_title );
+        $file_title = is_string( $file_title ) ? trim( $file_title ) : '';
+        if ( '' === $file_title ) {
+            return '';
+        }
+
+        if ( preg_match( '/^(file|image)\s*:\s*(.+)$/i', $file_title, $matches ) ) {
+            $file_title = trim( $matches[2] );
+        }
+
+        return '' === $file_title ? '' : 'File:' . $file_title;
+    }
+
+    private static function media_filename_from_title( string $file_title ): string {
+        $file_title = self::normalize_media_file_title( $file_title );
+        return preg_replace( '/^File:/i', '', $file_title );
+    }
+
+    private static function normalize_media_thumbnail_width( $thumbnail_width ): int {
+        $thumbnail_width = is_scalar( $thumbnail_width ) ? absint( $thumbnail_width ) : 512;
+        if ( ! $thumbnail_width ) {
+            $thumbnail_width = 512;
+        }
+
+        return max( 64, min( 2000, $thumbnail_width ) );
+    }
+
+    private static function article_media_candidate_limit( string $mime, int $limit ): int {
+        if ( '' === $mime ) {
+            return $limit;
+        }
+
+        if ( 'image/svg+xml' === $mime ) {
+            return 500;
+        }
+
+        return min( 500, max( 100, $limit * 5 ) );
+    }
+
+    private static function media_title_matches_mime_hint( string $file_title, string $mime ): bool {
+        $mime = strtolower( trim( $mime ) );
+        if ( 'image/svg+xml' === $mime ) {
+            return (bool) preg_match( '/\.svgz?$/i', self::media_filename_from_title( $file_title ) );
+        }
+
+        return true;
+    }
+
+    private static function media_extmetadata_keys(): array {
+        return [
+            'Attribution',
+            'Artist',
+            'Credit',
+            'DateTime',
+            'ImageDescription',
+            'License',
+            'LicenseShortName',
+            'LicenseUrl',
+            'ObjectName',
+            'Source',
+            'UsageTerms',
+        ];
     }
 
     public static function save_wordopedia_article( array $input ) {
@@ -2074,6 +2534,61 @@ class App extends BaseApp {
         ];
     }
 
+    private static function article_media_input_schema(): array {
+        return [
+            'type'                 => 'object',
+            'properties'           => [
+                'page_id'         => [
+                    'type'        => 'integer',
+                    'description' => 'Wikipedia page ID from wordopedia/search-wikipedia.',
+                ],
+                'title'           => [
+                    'type'        => 'string',
+                    'description' => 'Exact Wikipedia article title. Used when page_id is missing.',
+                ],
+                'language'        => [
+                    'type'        => 'string',
+                    'description' => 'Wikipedia language subdomain. Defaults to the current user locale when omitted.',
+                ],
+                'mime'            => [
+                    'type'        => 'string',
+                    'description' => 'Optional MIME type filter. Use image/svg+xml to list SVG files from the article.',
+                ],
+                'limit'           => [
+                    'type'        => 'integer',
+                    'description' => 'Maximum number of media files, from 1 to 50.',
+                ],
+                'thumbnail_width' => [
+                    'type'        => 'integer',
+                    'description' => 'Requested preview thumbnail width in pixels, from 64 to 2000. Defaults to 512.',
+                ],
+            ],
+            'additionalProperties' => false,
+        ];
+    }
+
+    private static function media_file_lookup_input_schema(): array {
+        return [
+            'type'                 => 'object',
+            'properties'           => [
+                'file_title'      => [
+                    'type'        => 'string',
+                    'description' => 'Wikimedia file title or file page URL, such as File:Example.svg, from wordopedia/list-article-media.',
+                ],
+                'language'        => [
+                    'type'        => 'string',
+                    'description' => 'Wikipedia language subdomain to resolve local and Commons files. Defaults to the current user locale when omitted.',
+                ],
+                'thumbnail_width' => [
+                    'type'        => 'integer',
+                    'description' => 'Requested preview thumbnail width in pixels, from 64 to 2000. Defaults to 512.',
+                ],
+            ],
+            'required'             => [ 'file_title' ],
+            'additionalProperties' => false,
+        ];
+    }
+
     private static function article_search_output_schema(): array {
         return [
             'type'       => 'object',
@@ -2098,6 +2613,77 @@ class App extends BaseApp {
                             'app_url'        => [ 'type' => 'string' ],
                         ],
                     ],
+                ],
+            ],
+        ];
+    }
+
+    private static function article_media_output_schema(): array {
+        return [
+            'type'       => 'object',
+            'properties' => [
+                'article'          => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'page_id'        => [ 'type' => 'integer' ],
+                        'title'          => [ 'type' => 'string' ],
+                        'language'       => [ 'type' => 'string' ],
+                        'language_label' => [ 'type' => 'string' ],
+                        'source_url'     => [ 'type' => 'string' ],
+                        'app_url'        => [ 'type' => 'string' ],
+                    ],
+                ],
+                'mime_filter'      => [ 'type' => 'string' ],
+                'count'            => [ 'type' => 'integer' ],
+                'total_candidates' => [ 'type' => 'integer' ],
+                'more_available'   => [ 'type' => 'boolean' ],
+                'media'            => [
+                    'type'  => 'array',
+                    'items' => self::media_file_schema(),
+                ],
+            ],
+        ];
+    }
+
+    private static function media_file_output_schema(): array {
+        return [
+            'type'       => 'object',
+            'properties' => [
+                'file' => self::media_file_schema(),
+            ],
+        ];
+    }
+
+    private static function media_file_schema(): array {
+        return [
+            'type'       => 'object',
+            'properties' => [
+                'page_id'         => [ 'type' => 'integer' ],
+                'title'           => [ 'type' => 'string', 'description' => 'Canonical MediaWiki file title. Use with wordopedia/get-media-file.' ],
+                'filename'        => [ 'type' => 'string' ],
+                'canonical_title' => [ 'type' => 'string' ],
+                'mime'            => [ 'type' => 'string' ],
+                'media_type'      => [ 'type' => 'string' ],
+                'repository'      => [ 'type' => 'string' ],
+                'original_url'    => [ 'type' => 'string', 'description' => 'Direct original media URL, such as the SVG file URL for image/svg+xml.' ],
+                'thumbnail_url'   => [ 'type' => 'string', 'description' => 'Rendered preview thumbnail URL when Wikimedia provides one.' ],
+                'description_url' => [ 'type' => 'string', 'description' => 'Wikimedia file description page with licensing and reuse details.' ],
+                'width'           => [ 'type' => 'integer' ],
+                'height'          => [ 'type' => 'integer' ],
+                'size'            => [ 'type' => 'integer' ],
+                'sha1'            => [ 'type' => 'string' ],
+                'description'     => [ 'type' => 'string' ],
+                'license'         => [ 'type' => 'string' ],
+                'license_url'     => [ 'type' => 'string' ],
+                'usage_terms'     => [ 'type' => 'string' ],
+                'artist'          => [ 'type' => 'string' ],
+                'credit'          => [ 'type' => 'string' ],
+                'attribution'     => [ 'type' => 'string' ],
+                'source'          => [ 'type' => 'string' ],
+                'metadata'        => [
+                    'type'                 => 'object',
+                    'description'          => 'Plain-text Wikimedia extmetadata keyed by original metadata names.',
+                    'additionalProperties' => [ 'type' => 'string' ],
                 ],
             ],
         ];

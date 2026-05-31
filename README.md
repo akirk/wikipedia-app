@@ -45,6 +45,8 @@ When WordPress provides the Abilities API, Wordopedia registers abilities under 
 
 - `wordopedia/search-wikipedia`
 - `wordopedia/get-article`
+- `wordopedia/list-article-media`
+- `wordopedia/get-media-file`
 - `wordopedia/save-article`
 - `wordopedia/list-saved-articles`
 - `wordopedia/get-saved-article`
@@ -53,7 +55,7 @@ When WordPress provides the Abilities API, Wordopedia registers abilities under 
 - `wordopedia/get-snippet`
 - `wordopedia/search-snippets`
 
-The plugin also adds AI assistant domain, instruction, and welcome-tip hints so assistant responses can link back to Wordopedia app URLs, cite Wikipedia source URLs where appropriate, and suggest useful Wordopedia tasks from the app screens.
+The plugin also adds AI assistant domain, instruction, and welcome-tip hints so assistant responses can link back to Wordopedia app URLs, cite Wikipedia source URLs where appropriate, find article media such as SVG files with Wikimedia Commons attribution metadata, and suggest useful Wordopedia tasks from the app screens.
 
 ## Requirements
 
