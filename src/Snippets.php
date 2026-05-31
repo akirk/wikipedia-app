@@ -113,7 +113,7 @@ trait Snippets {
         }
 
         return [
-            'snippet' => $snippet,
+            'snippet' => self::format_ability_snippet( $snippet ),
         ];
     }
 
@@ -127,7 +127,7 @@ trait Snippets {
         }
 
         return [
-            'snippet' => $snippet,
+            'snippet' => self::format_ability_snippet( $snippet ),
         ];
     }
 
@@ -144,8 +144,20 @@ trait Snippets {
         }
 
         return [
-            'snippets' => $snippets,
+            'snippets' => array_map( function( $snippet ) {
+                return is_array( $snippet ) ? self::format_ability_snippet( $snippet ) : $snippet;
+            }, $snippets ),
         ];
+    }
+
+    private static function format_ability_snippet( array $snippet ): array {
+        if ( ! array_key_exists( 'html', $snippet ) && array_key_exists( 'content', $snippet ) ) {
+            $snippet['html'] = self::snippet_display_html( (string) $snippet['content'] );
+        }
+
+        unset( $snippet['content'] );
+
+        return $snippet;
     }
 
     public static function save_wordopedia_snippet( array $input ) {
@@ -1055,7 +1067,6 @@ trait Snippets {
         ];
 
         if ( $include_content ) {
-            $properties['content'] = [ 'type' => 'string' ];
             $properties['html'] = [ 'type' => 'string' ];
             $properties['text'] = [ 'type' => 'string' ];
             $properties['original_text'] = [ 'type' => 'string' ];
